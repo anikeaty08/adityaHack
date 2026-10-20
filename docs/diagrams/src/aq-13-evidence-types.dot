@@ -1,0 +1,14 @@
+digraph { rankdir=LR;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="13 · Evidence types: pathogen vs residue"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ lab [label="Accepted laboratory\nmethod, analyte, reporting limit,\nsample custody", fillcolor="#ecd0f7", color="#8a2bb0"];
+ pcr [label="PCR report\nPATHOGEN status", fillcolor="#ffd9b0", color="#c4600a"]; res [label="Residue report\nELISA, confirmed by LC-MS/MS", fillcolor="#bfe0ff", color="#1c6fc2"]; mp [label="MPEDA pre-harvest test\nown type, validity dates", fillcolor="#bfe0ff", color="#1c6fc2"];
+ lab->pcr; lab->res; lab->mp;
+ s1 [label="NOT_DETECTED", fillcolor="#c8f0c8", color="#2e8b3e"]; s2 [label="DETECTED_WITHIN_LIMIT", fillcolor="#c8f0c8", color="#2e8b3e"]; s3 [label="DETECTED_ABOVE_LIMIT", fillcolor="#ffc9c9", color="#c0392b"]; s4 [label="INCONCLUSIVE", fillcolor="#fff3b0", color="#b8960c"]; s5 [label="INVALID", fillcolor="#fff3b0", color="#b8960c"]; s6 [label="INCOMPLETE", fillcolor="#fff3b0", color="#b8960c"];
+ res->s1; res->s2; res->s3; res->s4; res->s5; res->s6;
+ ok [label="Can support clearance\nonly where rules permit", shape=note, fillcolor="#c8f0c8", color="#2e8b3e"]; no [label="Block or review", shape=note, fillcolor="#ffc9c9", color="#c0392b"]; s1->ok; s2->ok; s3->no; s4->no; s5->no; s6->no;
+ pcr->x [style=invis]; x [label="PCR says nothing\nabout drug residue", shape=note, fillcolor="#e6e6e6", color="#666666"];
+}

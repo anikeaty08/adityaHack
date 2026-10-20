@@ -1,0 +1,11 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="08 · Harvest gate decision logic"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ s [label="Harvest requested\nfrozen evidence snapshot", fillcolor="#c8f0c8", color="#2e8b3e"]; e0 [label="Evaluation error or\ncompromised trust input?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ m [label="Any mandatory rule\nfailed?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"]; ev [label="All required evidence present,\nvalid and verified?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ bl [label="BLOCKED\nbanned drug, open withdrawal clock,\nresidue above limit", fillcolor="#ffc9c9", color="#c0392b"]; rv [label="REVIEW REQUIRED\nmissing, ambiguous, inconclusive,\ninvalid or unverified", fillcolor="#fff3b0", color="#b8960c"]; cl [label="CLEARED\nall mandatory rules pass\non verified evidence", fillcolor="#c8f0c8", color="#2e8b3e"];
+ s->e0; e0->rv [label="yes"]; e0->m [label="no"]; m->bl [label="yes"]; m->ev [label="no"]; ev->rv [label="no"]; ev->cl [label="yes"];
+}

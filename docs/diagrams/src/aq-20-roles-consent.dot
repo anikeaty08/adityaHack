@@ -1,0 +1,12 @@
+digraph { rankdir=LR;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="20 · Roles and consent-scoped access"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ farmer [label="Farmer\nowns the data", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"]; tech [label="Technician\nverifier", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"]; admin [label="Admin\ngovernance", shape=ellipse, fillcolor="#ecd0f7", color="#8a2bb0"]; exp [label="Exporter / processor", shape=ellipse, fillcolor="#ecd0f7", color="#8a2bb0"];
+ tenant [label="Tenant = farm\nfarm memberships, per-farm isolation\n(API, jobs, exports, storage)", fillcolor="#bfe0ff", color="#1c6fc2"]; cons [label="Consent grant\nscoped to one lot, revocable", fillcolor="#fff3b0", color="#b8960c"]; lot [label="Lot evidence + live passport status", fillcolor="#bfe0ff", color="#1c6fc2"];
+ farmer->tenant [label="logs, requests harvest"]; tech->tenant [label="verifies, samples,\nlogs test results"]; admin->tenant [label="rule packs, corrections,\nrecalls, keys"];
+ farmer->cons [label="issues / revokes"]; cons->exp [label="grants"]; exp->lot [label="views only through grant"]; tenant->lot;
+ lim [label="Revoking stops later access.\nIt cannot delete copies already downloaded.", shape=note, fillcolor="#ffc9c9", color="#c0392b"]; cons->lim [style=dashed, arrowhead=none];
+}

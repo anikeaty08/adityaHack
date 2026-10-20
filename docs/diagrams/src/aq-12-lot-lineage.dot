@@ -1,0 +1,10 @@
+digraph { rankdir=LR;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="12 · Lot lineage: pond to shipment"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ p [label="Pond", fillcolor="#c8f0c8", color="#2e8b3e"]; c [label="Crop cycle", fillcolor="#c8f0c8", color="#2e8b3e"]; t [label="Treatments (with scope)\nand pathogen tests\napply to the cycle", fillcolor="#ffd9b0", color="#c4600a"];
+ h [label="Harvest event\n(may be partial)", fillcolor="#bfe0ff", color="#1c6fc2"]; la [label="Lot A", fillcolor="#bfe0ff", color="#1c6fc2"]; lb [label="Lot B", fillcolor="#bfe0ff", color="#1c6fc2"]; lc [label="Lot C\n(from another pond)", fillcolor="#bfe0ff", color="#1c6fc2"];
+ m [label="Merged lot\nrestrictions by rule, not\n'strictest value'", fillcolor="#fff3b0", color="#b8960c"]; pr [label="Processing lot + shipment\n(after the pilot)", fillcolor="#ecd0f7", color="#8a2bb0"]; r [label="Samples and residue tests", fillcolor="#fff3b0", color="#b8960c"];
+ p->c; t->c; c->h; h->la; h->lb; lc->m; la->m; m->pr; r->la [style=dashed, label="evidence follows\nthe lineage"];
+}

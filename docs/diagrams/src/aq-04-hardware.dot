@@ -1,0 +1,13 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="04 · Pond node hardware"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ probe [label="DO probe\n(optical recommended)", fillcolor="#ffd9b0", color="#c4600a"]; ts [label="Temp / pH / salinity\nprobes", fillcolor="#ffd9b0", color="#c4600a"];
+ esp [label="ESP32 controller\nlocal rules, signed firmware", fillcolor="#ffd9b0", color="#c4600a", fontsize=14];
+ relay [label="Relay + contactor\nfails ON", fillcolor="#ffd9b0", color="#c4600a"]; cur [label="Current sensor\non the motor line", fillcolor="#ffd9b0", color="#c4600a"]; aer [label="Aerator motor", fillcolor="#e6e6e6", color="#666666"]; bypass [label="Manual bypass switch", fillcolor="#e6e6e6", color="#666666"];
+ mains [label="Mains power", fillcolor="#e6e6e6", color="#666666"]; backup [label="Backup power or\ntested degraded mode", fillcolor="#ffc9c9", color="#c0392b"];
+ gsm [label="4G module\nSMS fallback", fillcolor="#ffd9b0", color="#c4600a"]; wifi [label="Wi-Fi / MQTT to cloud", fillcolor="#bfe0ff", color="#1c6fc2"]; farmer [label="Farmer phone", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"];
+ probe->esp; ts->esp; esp->relay [label="on / off"]; relay->aer; bypass->aer [style=dashed]; aer->cur [label="draws current"]; cur->esp [label="motor-running\nfeedback", color="#c4600a", fontcolor="#c4600a"];
+ mains->relay; backup->esp [style=dashed]; esp->wifi [label="readings"]; esp->gsm [label="critical alerts"]; gsm->farmer [label="SMS"];
+}

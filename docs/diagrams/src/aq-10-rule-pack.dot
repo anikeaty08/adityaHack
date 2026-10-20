@@ -1,0 +1,10 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="10 · Rule packs and deterministic evaluation"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ src [label="Authoritative sources\nCAA lists, FSSAI, market MRLs,\nimport alerts", fillcolor="#ecd0f7", color="#8a2bb0"]; adm [label="Admin curates", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"]; pack [label="Rule pack\nversioned, signed,\neffective-dated", fillcolor="#bfe0ff", color="#1c6fc2"];
+ ev [label="Evidence snapshot\n(frozen input set)", fillcolor="#e6e6e6", color="#666666"]; eng [label="Rule engine\npure function", fillcolor="#bfe0ff", color="#1c6fc2"]; res [label="Result + reason codes", fillcolor="#fff3b0", color="#b8960c"];
+ store [label="Stored with pack id, ruleset version,\nengine version, evaluation time", fillcolor="#e6e6e6", color="#666666"]; replay [label="Any past decision\ncan be replayed", fillcolor="#c8f0c8", color="#2e8b3e"]; reeval [label="New pack published:\nopen lots re-evaluated", fillcolor="#ffc9c9", color="#c0392b"];
+ src->adm->pack; pack->eng; ev->eng; eng->res->store->replay; pack->reeval [style=dashed]; reeval->eng [style=dashed];
+}

@@ -25,6 +25,34 @@
 15. [References](#references)
 16. [License](#license)
 
+**Diagram index**
+
+| # | Diagram | Section |
+|---|---|---|
+| 01 | Two independent paths | 3 |
+| 02 | System context | 4.1 |
+| 03 | Container architecture | 4.2 |
+| 04 | Pond node hardware | 4.3 |
+| 05 | Edge safety loop | 5 |
+| 06 | Alert lifecycle | 5 |
+| 07 | Treatment to passport flow | 6.1 |
+| 08 | Harvest gate decision logic | 6.2 |
+| 09 | Harvest gate states | 6.2 |
+| 10 | Rule packs | 6.3 |
+| 11 | Certificate lifecycle | 6.4 |
+| 12 | Lot lineage | 7.1 |
+| 13 | Evidence types | 7.2 |
+| 14 | Invoice reconciliation | 7.3 |
+| 15 | Sensor reading to event | 8 |
+| 16 | Event ingestion path | 8 |
+| 17 | Event envelope and clocks | 8 |
+| 18 | Hash chains and anchoring | 8 |
+| 19 | Offline sync | 8 |
+| 20 | Roles and consent | 9 |
+| 21 | Privacy boundaries | 11 |
+
+Diagrams are PNGs in `docs/diagrams/`, with editable Graphviz sources in `docs/diagrams/src/`. Colour key: green is people on the farm, orange is pond hardware, blue is the platform, purple is outside parties, grey is storage and infrastructure, yellow is a decision or review state, red is a block or alert.
+
 ---
 
 ## 1. The problem
@@ -83,19 +111,33 @@ AquaSentinel runs **two independent paths** on one platform:
 
 The safety path never waits on the cloud. The compliance path never trusts AI.
 
+![Two independent paths](docs/diagrams/aq-01-two-paths.png)
+
+**Diagram 01.** The two paths share a platform but not a failure mode. On the left, a sensor reading reaches the aerator through local rules on the ESP32, and an alert goes out by push and then SMS. If anything fails, the aerator stays on. On the right, evidence flows into the event store, the rule engine and the harvest gate, and the result is a signed passport. If anything is unclear, the answer is REVIEW REQUIRED, never green.
+
 ---
 
 ## 4. Architecture
 
 A modular monolith (one deployable backend with clear internal modules) plus background workers. No Kafka, Kubernetes or microservices until real load demands them.
 
-**4.1 System overview.** Who talks to what. Two entry points feed one backend; the pond keeps working even if everything on the right is offline.
+### 4.1 System context
 
-![System overview](docs/diagrams/aq-01-overview.png)
+![System context](docs/diagrams/aq-02-system-context.png)
 
-**4.2 Backend core.** What happens to an event once it arrives. Read it top to bottom: events go in, a gate decision and a signed passport come out, and AI never sits on the decision path.
+**Diagram 02.** Everything that talks to AquaSentinel. Green ovals are the people on the farm (owner, technician, worker). Purple ovals are outside parties: the exporter who reads lot evidence, the admin who curates rule packs, and the lab that sends signed reports. Orange is the pond hardware, which exchanges readings and commands with the platform. Grey boxes are supporting services: OCR (advisory only), weather, push and SMS delivery, an external timestamp authority and a key management service (KMS).
 
-![Backend core](docs/diagrams/aq-02-core.png)
+### 4.2 Containers and modules
+
+![Container architecture](docs/diagrams/aq-03-container-architecture.png)
+
+**Diagram 03.** Inside the platform. Devices come in through the MQTT broker and apps come in through the API; both write to the **append-only event store**. An outbox worker then fans events out to projections, the rule engine and the alert service. The rule engine feeds the harvest gate, which feeds the passport and signing module, with consent and access control deciding who may see the result. AI services only send suggestions into the API. Postgres with TimescaleDB holds events and projections, object storage holds photos and lab reports, KMS holds keys, and a periodic Merkle root goes to an external timestamp.
+
+### 4.3 Pond node hardware
+
+![Pond node hardware](docs/diagrams/aq-04-hardware.png)
+
+**Diagram 04.** What sits at the pond. Probes feed the ESP32, which drives the relay and contactor. A current sensor on the motor line tells the ESP32 whether the aerator really started. A manual bypass switch lets a person run the aerator with no electronics at all. Mains power needs a backup strategy or a tested degraded mode, because a relay that fails ON cannot keep a motor running through an outage. A 4G module sends critical alerts by SMS when there is no internet.
 
 **Stack:** FastAPI, PostgreSQL with TimescaleDB, S3-compatible object storage, MQTT over TLS, Flutter for the farmer app, Next.js for the exporter and admin portals. No blockchain: per-stream hash chains with periodic Merkle anchoring give tamper evidence without one.
 
@@ -110,7 +152,10 @@ Dissolved oxygen (DO) drops after sunset and is lowest before dawn. The ESP32 co
 
 Both levels are configurable per farm and species. The published evidence on aeration setpoints is thin (one 2024 trial found no production difference between setpoints of 2.5, 3.5 and 4.5 mg/L, but higher setpoints cost more electricity), so both levels must be validated on real ponds.
 
-![Edge safety loop](docs/diagrams/aq-03-edge.png)
+
+![Edge safety loop](docs/diagrams/aq-05-edge-loop.png)
+
+**Diagram 05.** The loop that runs on the ESP32 on every reading. A reading that is invalid or stale defaults to aerator ON and alerts the farmer. A reading below the 3 mg/L hard floor forces the aerator ON and ignores the cloud. Otherwise the soft band decides: on below the ON level, off above the OFF level, and no change in between (hysteresis, to avoid relay chatter). Every action is then checked against the current sensor, and a motor that is not drawing current raises an aerator-fault alert.
 
 **Hardware requirements, not firmware features:**
 
@@ -121,6 +166,10 @@ Both levels are configurable per farm and species. The published evidence on aer
 - **Alerts** (low DO, power cut, aerator fault, missing heartbeat) go by push, escalate, and also go by **SMS over a 4G module** when there is no internet. A reminder or SMS tells the farmer to act; it never replaces the local control loop.
 - Firmware updates are **signed**, with rollback. Configuration changes are signed, with safe bounds.
 
+![Alert lifecycle](docs/diagrams/aq-06-alert-lifecycle.png)
+
+**Diagram 06.** An alert is not finished when it is sent. It goes to the farmer by push, and if nobody acknowledges it in time it escalates to the worker and the technician and goes out by SMS over 4G. If it is still unacknowledged it repeats and notifies a second contact. The alert and every response are recorded as events. The local control loop keeps running throughout.
+
 > Mains wiring for the contactor and aerators must be done by a licensed electrician.
 
 ---
@@ -129,7 +178,10 @@ Both levels are configurable per farm and species. The published evidence on aer
 
 ### 6.1 From treatment to signed passport
 
-![Treatment logging to harvest clearance](docs/diagrams/aq-04-treatment.png)
+![Treatment logging to harvest clearance](docs/diagrams/aq-07-treatment-flow.png)
+
+**Diagram 07.** The farmer photographs the product label and enters the dose. OCR suggests the product, but the farmer must confirm it, because AI never decides. The rule pack then checks the product: a banned product is BLOCKED with an alert, an unknown one goes to REVIEW REQUIRED for a technician or admin, and an allowed one starts a withdrawal clock. At harvest request the gate runs again. If it fails, the lot is held with the exact reason shown, the issue is fixed and the farmer re-requests. If it passes, the passport is signed with a QR code and the exporter can view the consented lot.
+
 
 Two deterministic checks guard the path. The rule-pack check runs when a treatment is logged. The harvest gate runs again at harvest and re-reads the whole log.
 
@@ -145,13 +197,24 @@ The gate is a pure function of a frozen input set. **It never returns CLEARED by
 | An unexpected error occurs during evaluation | `REVIEW REQUIRED` |
 | Every mandatory rule passes on verified evidence | `CLEARED` |
 
-![Harvest gate states](docs/diagrams/aq-05-gate.png)
+
+![Harvest gate decision logic](docs/diagrams/aq-08-gate-logic.png)
+
+**Diagram 08.** The order of the checks matters. An evaluation error or a compromised trust input (a revoked key, a failed signature) goes straight to REVIEW REQUIRED. Otherwise a failed mandatory rule gives BLOCKED. Otherwise, if any required evidence is missing, invalid or unverified, the result is REVIEW REQUIRED. Only when every mandatory rule passes on complete, verified evidence does the gate return CLEARED.
+
+![Harvest gate states](docs/diagrams/aq-09-gate-states.png)
+
+**Diagram 09.** The states a harvest can be in. A request lands in CLEARED, REVIEW REQUIRED or BLOCKED. Review can move to CLEARED once evidence is corrected and re-evaluated, or to BLOCKED when a violation is confirmed. BLOCKED can only move back to REVIEW REQUIRED through a new correction event. A CLEARED certificate can later become Revoked (recall or a new bad result) or Superseded (a new evidence snapshot).
 
 **Correction is not override.** Authorized people may correct evidence, resolve a product identity and trigger a fresh evaluation, and the gate then decides again. No override turns a failed mandatory rule into CLEARED. A legally permitted exception exists only as an explicit rule in the rule pack, with its authority cited. Corrections need dual approval.
 
 ### 6.3 Rule packs
 
 A rule pack holds the banned list, maximum residue limits (MRLs) per market and withdrawal clocks. Each pack is versioned, signed and effective-dated. Each rule needs a named authoritative source and owner, the market, species, formulation and treatment context it applies to, and the legal trigger date (treatment, harvest or export).
+
+![Rule packs](docs/diagrams/aq-10-rule-pack.png)
+
+**Diagram 10.** Admins curate a pack from authoritative sources. The rule engine is a pure function of the pack and a frozen evidence snapshot, so the same inputs always give the same result. Each result is stored with the pack id, ruleset version, engine version, evaluation time and reason codes, which lets any past decision be replayed. Publishing a new pack re-evaluates open lots.
 
 Every gate result stores the pack id, ruleset version, engine version, evidence snapshot, evaluation time and reason codes, so any past decision can be replayed. Publishing a new pack re-evaluates open lots.
 
@@ -163,6 +226,10 @@ The **withdrawal clock** needs the full treatment record: product identity and f
 
 A certificate is tied to one lot, one evidence snapshot and one rule-pack version. Five things stay separate: current eligibility, the decision at issuance, certificate validity (valid, superseded or revoked), recall status, and physical shipment status. New or corrected evidence, a rule-pack change, a revoked key or a recall each trigger re-evaluation. The QR page shows **live** status; an offline cached status is shown as **stale**.
 
+![Certificate lifecycle](docs/diagrams/aq-11-certificate-lifecycle.png)
+
+**Diagram 11.** A certificate is issued for one lot, one evidence snapshot and one rule-pack version. It stays Valid until something changes: new evidence makes it Superseded, a recall or failed re-check makes it Revoked. The QR page reads the live state, or marks a cached copy STALE when it is offline.
+
 ---
 
 ## 7. Lots, evidence and trust
@@ -171,7 +238,10 @@ A certificate is tied to one lot, one evidence snapshot and one rule-pack versio
 
 Treatments attach to a **crop cycle**, never directly to a lot, and every lot inherits from its source. Every treatment also carries an explicit **scope** (whole pond, a section, or a defined population).
 
-![Lot lineage](docs/diagrams/aq-06-lineage.png)
+
+![Lot lineage](docs/diagrams/aq-12-lot-lineage.png)
+
+**Diagram 12.** Treatments and pathogen tests attach to the crop cycle, so every lot harvested from it inherits them. A partial harvest can produce several lots. A lot from another pond can merge with them, and the merged lot's restrictions are computed by rule, not by a blanket strictest-value shortcut. Residue samples and tests follow the lot they were taken from.
 
 If one treated pond is harvested into three lots, all three inherit its treatment history. If two lots merge, the result carries the evidence of both, and its restrictions are computed by the applicable rule, never by a blanket "strictest value" shortcut. A passing residue result is never carried onto a merged lot unless the sampling and compliance rules permit that inference.
 
@@ -188,17 +258,29 @@ If one treated pond is harvested into three lots, all three inherit its treatmen
 
 **Lab evidence is not automatically enough.** The rule pack defines accepted laboratories, suitable methods and analytes, reporting limits, sample-custody checks, and how invalid or inconclusive tests are handled. Residue evidence carries one of six statuses: `NOT_DETECTED`, `DETECTED_WITHIN_LIMIT`, `DETECTED_ABOVE_LIMIT`, `INCONCLUSIVE`, `INVALID`, `INCOMPLETE`. Only the first two can support clearance, and only where the rules permit. `NOT_DETECTED` means not detected by that method at that reporting limit, never proven absent.
 
+![Evidence types](docs/diagrams/aq-13-evidence-types.png)
+
+**Diagram 13.** Two different kinds of lab evidence. A PCR report describes pathogen status and says nothing about drug residue. A residue report (ELISA screening, with positives confirmed by LC-MS/MS) ends in one of six statuses. Only NOT_DETECTED and DETECTED_WITHIN_LIMIT can support clearance, and only where the rules permit. The other four send the lot to block or review. MPEDA's pre-harvest test is its own evidence type with validity dates.
+
 MPEDA's pre-harvest test is modelled as its own evidence type with validity dates. It covers a fixed list of compounds and is mandatory only for EU-bound shrimp.
 
 ### 7.3 Invoice and inventory reconciliation
 
 Capture each purchase (invoice photo, product identity, quantity, batch), keep a stock ledger, compare expected usage with logged treatments, and send unexplained gaps to a technician's review queue. This shows that a product was bought and flags stock that vanished without a logged treatment. It cannot prove a dose was applied or that every application was recorded.
 
+![Invoice reconciliation](docs/diagrams/aq-14-invoice-reconciliation.png)
+
+**Diagram 14.** Each purchase becomes a stock entry, and logged treatments give the expected usage. When the two match, nothing happens. When they do not, the gap goes to a technician's review queue. The check shows a product was bought and flags stock that vanished, but it cannot prove a dose was applied.
+
 ---
 
 ## 8. The event log
 
 Every fact the system relies on is an **immutable event**. Tables, dashboards and certificates are projections that can be rebuilt by replaying events. A correction is a new event that points at the one it corrects.
+
+![Sensor reading to event](docs/diagrams/aq-15-sensor-pipeline.png)
+
+**Diagram 15.** How raw sensor readings become events. The ESP32 checks quality (stuck, drifting, fouled or out-of-range probes), buffers locally so nothing is lost offline, then batches readings with a batch hash and signs the batch. The cloud validates it and stores only the batch hash in the event store, while the readings themselves go to TimescaleDB, where alert rules run.
 
 The full design is in the Event Schema doc. In short:
 
@@ -207,7 +289,22 @@ The full design is in the Event Schema doc. In short:
 - **36 event types** across four streams (`farm`, `cycle`, `lot`, `rulepack`). Raw sensor rows are batched into `ReadingBatchRecorded` events with a batch hash.
 - **Per-stream hash chains**, signed with Ed25519 where required (devices, labs, the passport service, rule-pack approvers), with periodic Merkle roots and an external timestamp.
 
-![Event ingestion path](docs/diagrams/aq-07-ingest.png)
+
+![Event ingestion path](docs/diagrams/aq-16-ingestion.png)
+
+**Diagram 16.** The path every event takes. A duplicate with the same hash returns the original result. A new event is validated, then written in one transaction that assigns its sequence number, server time and hashes and adds an outbox row. The author gets an acknowledgement, flagged if there was clock drift, a sequence gap or backdating. A worker then updates projections, runs the rule engine and raises alerts.
+
+![Event envelope and clocks](docs/diagrams/aq-17-event-envelope.png)
+
+**Diagram 17.** The envelope has 27 fields: some filled by the author, some assigned by the server. Three clocks are kept, and only the server's `received_at` is trusted. Flags such as BACKDATED, FUTURE_TIMESTAMP, DEVICE_CLOCK, SEQ_GAP and SEQ_REPEAT are kept and raise a review item.
+
+![Hash chains and anchoring](docs/diagrams/aq-18-hash-chains.png)
+
+**Diagram 18.** Each stream links every event to the previous one by hash, so changing an old event breaks every later hash. A periodic Merkle root over many streams is sent to an external timestamp. Signatures from devices, labs, the passport service and rule-pack approvers are checked against a key registry. An outside auditor can recompute all of it. This proves a record was not changed after it was written; it does not prove it was true.
+
+![Offline sync](docs/diagrams/aq-19-offline-sync.png)
+
+**Diagram 19.** Offline capture. The app saves events locally with idempotency keys and syncs when the connection returns. The server deduplicates, validates and assigns receive time. Evidence events are never merged or overwritten, so a conflict becomes a review item. Late events may be flagged as backdated, and critical alerts still go by SMS.
 
 Rejected events are not stored in the chain (the attempt is logged operationally). Flagged events are kept and raise a review item. Evidence events (treatments, tests, harvests, lot changes) are never merged or overwritten; conflicts from offline devices become review items.
 
@@ -225,6 +322,10 @@ Rejected events are not stored in the chain (the attempt is logged operationally
 Tenant = farm. Users are modelled separately from farms through farm memberships, so one person can belong to more than one farm or hold a technician or lab relationship. Tenant isolation applies to API endpoints, background jobs, exports and object storage, not only the dashboard.
 
 Exporters see a lot only through a consent grant scoped to that lot. Revoking consent stops later access through AquaSentinel; it cannot delete copies already downloaded, and the consent screen says so.
+
+![Roles and consent](docs/diagrams/aq-20-roles-consent.png)
+
+**Diagram 20.** The farm is the tenant. Farmers log data and request harvests, technicians verify and log test results, and admins manage rule packs, corrections, recalls and keys. An exporter can see a lot only through a consent grant that the farmer issues, scoped to that lot and revocable.
 
 ---
 
@@ -258,6 +359,10 @@ Exporters see a lot only through a consent grant scoped to that lot. Revoking co
 ---
 
 ## 11. Security and privacy
+
+![Privacy boundaries](docs/diagrams/aq-21-privacy-boundaries.png)
+
+**Diagram 21.** What lives where. The tamper-evident ledger holds only opaque ids, quantities, dates, hashes and a coarse location cell. Names, phone numbers, addresses and exact coordinates sit in a separate store encrypted with per-farm keys, linked only by opaque ids. Photos and lab reports sit in object storage with their hashes recorded in events. Destroying a farm's key makes its encrypted copies unreadable, though that alone does not prove every copy is gone.
 
 - **Integrity, not truth.** Hash chains show records were not changed after being written. Truthfulness comes from the evidence flows in section 7.
 - **Signing.** Devices sign telemetry, labs sign reports, and the passport service signs certificates with a KMS key. A key registry lets anyone verify a certificate without trusting the app. A compromised key invalidates only signatures made after the compromise time, and every certificate resting on them goes back through the gate. Manual key rotation from the start; automation later.

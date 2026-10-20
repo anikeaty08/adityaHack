@@ -1,0 +1,12 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="16 · Event ingestion path"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ a [label="Author (app or ESP32)\nsends event + idempotency_key", fillcolor="#c8f0c8", color="#2e8b3e"]; s1 [label="Ingest (API or MQTT)\nauthenticate, check tenant", fillcolor="#bfe0ff", color="#1c6fc2"]; d1 [label="Idempotency check", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ dup [label="Duplicate, same hash:\nreturn original result", fillcolor="#e6e6e6", color="#666666"]; v [label="Validate schema, units, bounds", fillcolor="#bfe0ff", color="#1c6fc2"];
+ tx [label="ONE transaction: assign stream_seq, received_at,\nhashes, write outbox row", fillcolor="#bfe0ff", color="#1c6fc2"]; ack [label="Accepted\n(flagged on clock drift, sequence gap, backdating)", fillcolor="#c8f0c8", color="#2e8b3e"];
+ w [label="Outbox worker:\nupdate projections, run rule engine, raise alerts", fillcolor="#ffd9b0", color="#c4600a"]; rej [label="Rejected: not in chain,\nlogged operationally", fillcolor="#ffc9c9", color="#c0392b"];
+ a->s1->d1; d1->dup [label="duplicate"]; d1->v [label="new"]; v->tx [label="valid"]; v->rej [label="invalid"]; tx->ack; tx->w;
+}

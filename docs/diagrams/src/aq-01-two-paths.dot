@@ -1,0 +1,15 @@
+digraph { rankdir=LR;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="01 · Two independent paths"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+ subgraph cluster_safety { label="SAFETY PATH (no cloud needed)"; style="dashed,rounded"; color="#c4600a"; fontcolor="#c4600a"; fontsize=14;
+
+  s1 [label="Sensors\nDO, temp, pH", fillcolor="#ffd9b0", color="#c4600a"]; s2 [label="ESP32\nlocal rules", fillcolor="#ffd9b0", color="#c4600a"]; s3 [label="Aerator\nfails ON", fillcolor="#ffd9b0", color="#c4600a"]; s4 [label="Alert\npush, then SMS", fillcolor="#ffc9c9", color="#c0392b"]; s1->s2->s3; s2->s4;
+ }
+ subgraph cluster_comp { label="COMPLIANCE PATH (cloud)"; style="dashed,rounded"; color="#1c6fc2"; fontcolor="#1c6fc2"; fontsize=14;
+
+  c1 [label="Evidence\ntreatments, labs, harvest", fillcolor="#c8f0c8", color="#2e8b3e"]; c2 [label="Append-only\nevent store", fillcolor="#bfe0ff", color="#1c6fc2"]; c3 [label="Rule engine\nversioned packs", fillcolor="#bfe0ff", color="#1c6fc2"]; c4 [label="Harvest gate", fillcolor="#fff3b0", color="#b8960c"]; c5 [label="Signed passport", fillcolor="#ecd0f7", color="#8a2bb0"]; c1->c2->c3->c4->c5;
+ }
+ fail1 [label="If anything fails:\naerator stays ON", shape=note, fillcolor="#ffc9c9", color="#c0392b"]; fail2 [label="If anything is unclear:\nREVIEW REQUIRED, never green", shape=note, fillcolor="#fff3b0", color="#b8960c"];
+ s3->fail1 [style=dashed, arrowhead=none]; c4->fail2 [style=dashed, arrowhead=none];
+}

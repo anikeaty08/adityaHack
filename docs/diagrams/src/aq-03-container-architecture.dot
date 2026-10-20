@@ -1,0 +1,16 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="03 · Container architecture: modular monolith"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ subgraph cluster_in { label="Entry points"; style="dashed,rounded"; color="#555555"; fontcolor="#555555";
+  mqtt [label="MQTT broker (TLS)\nper-device certificates", fillcolor="#e6e6e6", color="#666666"]; api [label="FastAPI API\nauth, tenant checks", fillcolor="#bfe0ff", color="#1c6fc2"]; }
+ subgraph cluster_core { label="Modular monolith + background workers"; style="dashed,rounded"; color="#1c6fc2"; fontcolor="#1c6fc2";
+  es [label="Event store\nappend-only, hash chains", fillcolor="#bfe0ff", color="#1c6fc2"]; ob [label="Outbox worker", fillcolor="#bfe0ff", color="#1c6fc2"]; proj [label="Projections\nponds, lots, status", fillcolor="#bfe0ff", color="#1c6fc2"]; re [label="Rule engine", fillcolor="#bfe0ff", color="#1c6fc2"]; gate [label="Harvest gate", fillcolor="#fff3b0", color="#b8960c"]; pass [label="Passport + signing", fillcolor="#bfe0ff", color="#1c6fc2"]; con [label="Consent + access", fillcolor="#bfe0ff", color="#1c6fc2"]; alert [label="Alert service", fillcolor="#ffc9c9", color="#c0392b"]; }
+ ai [label="AI services (advisory only)\nOCR, triage, forecast", fillcolor="#c8f0c8", color="#2e8b3e"];
+ subgraph cluster_data { label="Storage and trust"; style="dashed,rounded"; color="#666666"; fontcolor="#666666";
+  pg [label="Postgres + TimescaleDB", fillcolor="#e6e6e6", color="#666666"]; s3 [label="S3 / MinIO\nphotos, lab reports", fillcolor="#e6e6e6", color="#666666"]; kms [label="KMS\nsigning + data keys", fillcolor="#e6e6e6", color="#666666"]; ts [label="External timestamp\nMerkle roots", fillcolor="#e6e6e6", color="#666666"]; }
+ mqtt->es; api->es; es->ob->proj; ob->re->gate->pass; con->pass; ob->alert;
+ es->pg; es->s3; pass->kms; es->ts [style=dashed, label="anchor"];
+ ai->api [style=dashed, label="suggestions only", color="#2e8b3e", fontcolor="#2e8b3e"];
+}

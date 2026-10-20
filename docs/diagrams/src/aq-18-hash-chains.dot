@@ -1,0 +1,13 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="18 · Hash chains and external anchoring"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12, shape=box];
+ subgraph cluster_chain { label="One stream (farm / cycle / lot / rulepack)"; style="dashed,rounded"; color="#1c6fc2"; fontcolor="#1c6fc2";
+  e1 [label="Event 1\nhash h1", fillcolor="#bfe0ff", color="#1c6fc2"]; e2 [label="Event 2\nprev = h1, hash h2", fillcolor="#bfe0ff", color="#1c6fc2"]; e3 [label="Event 3\nprev = h2, hash h3", fillcolor="#bfe0ff", color="#1c6fc2"]; e1->e2->e3; }
+ mk [label="Periodic Merkle root\nover many streams", fillcolor="#e6e6e6", color="#666666"]; ext [label="External timestamp\nproof of existence at time T", fillcolor="#ecd0f7", color="#8a2bb0"]; aud [label="Auditor recomputes hashes,\nwalks chains, checks signatures\nand Merkle paths", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"];
+ sig [label="Ed25519 signatures\ndevices, labs, passport service,\nrule-pack approvers", fillcolor="#ffd9b0", color="#c4600a"]; reg [label="Key registry", fillcolor="#e6e6e6", color="#666666"];
+ e3->mk; mk->ext; ext->aud; sig->e2 [style=dashed]; reg->sig [style=dashed, dir=back]; reg->aud [style=dashed];
+ note [label="Proves a record was not changed after writing.\nDoes NOT prove it was true. No blockchain needed.", shape=note, fillcolor="#ffc9c9", color="#c0392b"]; mk->note [style=dashed, arrowhead=none];
+}

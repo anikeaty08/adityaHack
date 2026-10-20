@@ -1,0 +1,12 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="11 · Certificate lifecycle"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ iss [label="Issued\none lot, one evidence snapshot,\none rule-pack version", fillcolor="#c8f0c8", color="#2e8b3e"]; val [label="Valid", fillcolor="#c8f0c8", color="#2e8b3e"]; sup [label="Superseded", fillcolor="#e6e6e6", color="#666666"]; rev [label="Revoked", fillcolor="#ffc9c9", color="#c0392b"];
+ trig [label="Triggers re-evaluation:\nnew or corrected evidence, rule-pack\nchange, revoked key, recall", fillcolor="#fff3b0", color="#b8960c"];
+ qr [label="QR page\nlive status, or\nSTALE if cached offline", fillcolor="#ecd0f7", color="#8a2bb0"];
+ iss->val; trig->val [style=dashed, label="re-check"]; val->sup [label="new snapshot"]; val->rev [label="recall or failed re-check"]; val->qr; sup->qr; rev->qr;
+ note [label="Kept separate: current eligibility, issuance decision,\ncertificate validity, recall status, shipment status", shape=note, fillcolor="#e6e6e6", color="#666666"]; qr->note [style=dashed, arrowhead=none];
+}

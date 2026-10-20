@@ -1,0 +1,14 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="05 · Edge safety loop (runs on the ESP32)"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ a [label="Read DO sensor", fillcolor="#ffd9b0", color="#c4600a"]; b [label="Reading valid\nand fresh?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ c [label="Proposed default: aerator ON,\nalert farmer, SMS if offline", fillcolor="#ffc9c9", color="#c0392b"]; d [label="DO below hard\nfloor (3 mg/L)?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ e [label="Force aerator ON\n(ignores the cloud)", fillcolor="#ffc9c9", color="#c0392b"]; f [label="Where is DO in\nthe soft band?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ g [label="Aerator ON", fillcolor="#ffd9b0", color="#c4600a"]; h [label="Aerator OFF", fillcolor="#ffd9b0", color="#c4600a"]; i [label="Keep current state\n(hysteresis)", fillcolor="#e6e6e6", color="#666666"];
+ j [label="Current sensor shows\nmotor running?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"]; k [label="Raise aerator-fault alert", fillcolor="#ffc9c9", color="#c0392b"]; l [label="Record AeratorActionRecorded", fillcolor="#bfe0ff", color="#1c6fc2"];
+ a->b; b->c [label="no"]; b->d [label="yes"]; d->e [label="yes"]; d->f [label="no"]; f->g [label="below ON level"]; f->h [label="above OFF level"]; f->i [label="between"];
+ e->j; g->j; c->j; j->k [label="no"]; j->l [label="yes"];
+}

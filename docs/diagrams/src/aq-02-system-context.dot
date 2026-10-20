@@ -1,0 +1,15 @@
+digraph { rankdir=LR;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="02 · System context: who talks to AquaSentinel"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ hw [label="Pond hardware\nESP32 + sensors", fillcolor="#ffd9b0", color="#c4600a"];
+ farmer [label="Farmer / owner\nmobile app", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"]; tech [label="Technician /\naqua expert", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"]; worker [label="Farm worker\nmobile app", shape=ellipse, fillcolor="#c8f0c8", color="#2e8b3e"];
+ plat [label="AquaSentinel\nhealth + compliance platform", shape=ellipse, fillcolor="#bfe0ff", color="#1c6fc2", fontsize=15];
+ exp [label="Exporter / buyer\nweb portal", shape=ellipse, fillcolor="#ecd0f7", color="#8a2bb0"]; admin [label="Admin\nrule packs, recalls", shape=ellipse, fillcolor="#ecd0f7", color="#8a2bb0"]; lab [label="Lab\nsigned PCR + residue reports", shape=ellipse, fillcolor="#ecd0f7", color="#8a2bb0"];
+ ext1 [label="OCR service\n(advisory)", fillcolor="#e6e6e6", color="#666666"]; ext2 [label="Weather API", fillcolor="#e6e6e6", color="#666666"]; ext3 [label="Push + SMS\nprovider", fillcolor="#e6e6e6", color="#666666"]; ext4 [label="External timestamp\nauthority", fillcolor="#e6e6e6", color="#666666"]; ext5 [label="KMS", fillcolor="#e6e6e6", color="#666666"];
+ hw -> plat [dir=both, label="readings up\ncommands down", color="#c4600a", fontcolor="#c4600a"];
+ farmer -> plat [dir=both, color="#2e8b3e", label="logs, photos\nalerts, advice"]; tech -> plat [dir=both, color="#2e8b3e"]; worker -> plat [dir=both, color="#2e8b3e"];
+ plat -> exp [label="passport,\nlot evidence", color="#8a2bb0", fontcolor="#8a2bb0"]; admin -> plat [color="#8a2bb0"]; lab -> plat [label="signed reports", color="#8a2bb0", fontcolor="#8a2bb0"];
+ plat -> ext1 [style=dashed]; plat -> ext2 [style=dashed]; plat -> ext3 [style=dashed]; plat -> ext4 [style=dashed]; plat -> ext5 [style=dashed];
+}

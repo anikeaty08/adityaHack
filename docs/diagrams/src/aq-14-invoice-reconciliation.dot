@@ -1,0 +1,10 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="14 · Invoice and inventory reconciliation"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ inv [label="Purchase captured\ninvoice photo, product,\nquantity, batch", fillcolor="#c8f0c8", color="#2e8b3e"]; stock [label="Stock ledger", fillcolor="#bfe0ff", color="#1c6fc2"]; use [label="Logged treatments\n(expected usage)", fillcolor="#bfe0ff", color="#1c6fc2"]; cmp [label="Compare expected\nvs logged", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ ok [label="Consistent", fillcolor="#c8f0c8", color="#2e8b3e"]; gap [label="Unexplained gap", fillcolor="#ffc9c9", color="#c0392b"]; q [label="Technician review queue", fillcolor="#c8f0c8", color="#2e8b3e"]; lim [label="Shows a product was bought and flags vanished stock.\nCannot prove a dose was applied.", shape=note, fillcolor="#e6e6e6", color="#666666"];
+ inv->stock; stock->cmp; use->cmp; cmp->ok [label="matches"]; cmp->gap [label="mismatch"]; gap->q; ok->lim [style=dashed, arrowhead=none];
+}

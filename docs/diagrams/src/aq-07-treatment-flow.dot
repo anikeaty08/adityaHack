@@ -1,0 +1,11 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="07 · Treatment logging to harvest clearance"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ a [label="Farmer photographs the label\nand enters the dose", fillcolor="#c8f0c8", color="#2e8b3e"]; b [label="OCR suggests the product\n(advisory only)", fillcolor="#c8f0c8", color="#2e8b3e"]; c [label="Farmer confirms product identity", fillcolor="#c8f0c8", color="#2e8b3e"];
+ d [label="Rule-pack check", shape=diamond, fillcolor="#fff3b0", color="#b8960c"]; e [label="BLOCKED + alert", fillcolor="#ffc9c9", color="#c0392b"]; f [label="REVIEW REQUIRED\ntechnician or admin", fillcolor="#fff3b0", color="#b8960c"]; g [label="Withdrawal clock starts", fillcolor="#bfe0ff", color="#1c6fc2"];
+ h [label="Harvest request", fillcolor="#c8f0c8", color="#2e8b3e"]; i [label="Gate passes?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"]; j [label="Held at gate: reason shown,\nfix, re-request", fillcolor="#ffc9c9", color="#c0392b"]; k [label="Passport signed\nQR with live status", fillcolor="#bfe0ff", color="#1c6fc2"]; l [label="Exporter views the consented lot", fillcolor="#ecd0f7", color="#8a2bb0"];
+ a->b->c->d; d->e [label="banned"]; d->f [label="unknown"]; d->g [label="allowed"]; g->h->i; i->j [label="no"]; j->h; i->k [label="yes"]; k->l;
+}

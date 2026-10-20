@@ -1,0 +1,11 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="19 · Offline capture and sync"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ a [label="Farmer logs readings, treatments,\nphotos with no internet", fillcolor="#c8f0c8", color="#2e8b3e"]; b [label="Saved locally with\nidempotency keys + device clock", fillcolor="#c8f0c8", color="#2e8b3e"]; c [label="Connection returns", fillcolor="#e6e6e6", color="#666666"]; d [label="App syncs queued events", fillcolor="#c8f0c8", color="#2e8b3e"];
+ e [label="Server: dedupe, validate,\nassign received_at", fillcolor="#bfe0ff", color="#1c6fc2"]; f [label="Conflict with other\ndevice or user?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"]; g [label="Accepted and stored", fillcolor="#c8f0c8", color="#2e8b3e"];
+ h [label="Evidence events never merged or overwritten.\nConflict becomes a review item.", fillcolor="#ffc9c9", color="#c0392b"]; i [label="Late event flagged BACKDATED if clock\ndrift is beyond tolerance", fillcolor="#fff3b0", color="#b8960c"]; j [label="Critical alerts still go by SMS\nwhile the phone is offline", fillcolor="#ffd9b0", color="#c4600a"];
+ a->b->c->d->e->f; f->g [label="no"]; f->h [label="yes"]; e->i [style=dashed]; b->j [style=dashed];
+}

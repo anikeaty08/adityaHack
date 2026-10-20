@@ -1,0 +1,11 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="06 · Alert lifecycle and escalation"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ t [label="Trigger\nlow DO, power cut,\naerator fault, missed heartbeat", fillcolor="#ffc9c9", color="#c0392b"]; p [label="Push to farmer", fillcolor="#bfe0ff", color="#1c6fc2"]; a1 [label="Acknowledged\nin time?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"];
+ es [label="Escalate\nworker, technician", fillcolor="#bfe0ff", color="#1c6fc2"]; sms [label="SMS over 4G\n(if no internet)", fillcolor="#ffd9b0", color="#c4600a"]; a2 [label="Acknowledged?", shape=diamond, fillcolor="#fff3b0", color="#b8960c"]; call [label="Repeat + notify\nsecond contact", fillcolor="#ffc9c9", color="#c0392b"];
+ act [label="Farmer acts\n(local loop already running)", fillcolor="#c8f0c8", color="#2e8b3e"]; log [label="Alert and response\nrecorded as events", fillcolor="#bfe0ff", color="#1c6fc2"];
+ t->p->a1; a1->act [label="yes"]; a1->es [label="no"]; es->sms; sms->a2; a2->act [label="yes"]; a2->call [label="no"]; call->a2 [style=dashed]; act->log;
+}

@@ -1,0 +1,13 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="17 · Event envelope and the three clocks"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ env [label="Event envelope: 27 fields, typed payload", fillcolor="#bfe0ff", color="#1c6fc2", fontsize=14];
+ au [label="Filled by the author\nevent type, stream, payload,\nidempotency_key, actor", fillcolor="#c8f0c8", color="#2e8b3e"]; sv [label="Assigned by the server\nstream_seq, received_at,\nprevious_hash, event_hash", fillcolor="#bfe0ff", color="#1c6fc2"];
+ c1 [label="occurred_at\nclaimed by the author", fillcolor="#fff3b0", color="#b8960c"]; c2 [label="recorded_at\ndevice clock", fillcolor="#fff3b0", color="#b8960c"]; c3 [label="received_at\nserver clock: the only trusted time", fillcolor="#c8f0c8", color="#2e8b3e"];
+ env->au; env->sv; au->c1; au->c2; sv->c3;
+ rule [label="An unverified timestamp can only make\na withdrawal clock longer, never shorter", shape=note, fillcolor="#ffc9c9", color="#c0392b"]; c1->rule [style=dashed]; c2->rule [style=dashed];
+ fl [label="Flags kept, review item raised:\nBACKDATED, FUTURE_TIMESTAMP, DEVICE_CLOCK,\nSEQ_GAP, SEQ_REPEAT", shape=note, fillcolor="#e6e6e6", color="#666666"]; c3->fl [style=dashed];
+}

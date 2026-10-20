@@ -1,0 +1,11 @@
+digraph { rankdir=LR;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="09 · Harvest gate states"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ start [shape=circle, label="", width=0.25, style=filled, fillcolor="#333333"];
+ req [label="Requested", fillcolor="#e6e6e6", color="#666666"]; cl [label="CLEARED", fillcolor="#c8f0c8", color="#2e8b3e"]; rv [label="REVIEW REQUIRED", fillcolor="#fff3b0", color="#b8960c"]; bl [label="BLOCKED", fillcolor="#ffc9c9", color="#c0392b"]; rev [label="Revoked", fillcolor="#ffc9c9", color="#c0392b"]; sup [label="Superseded", fillcolor="#e6e6e6", color="#666666"];
+ start->req [label="harvest request"]; req->cl [label="all mandatory rules pass\non verified evidence"]; req->rv [label="evidence missing, ambiguous,\nor unverified"]; req->bl [label="a mandatory rule fails"];
+ rv->cl [label="evidence corrected,\nre-evaluated"]; rv->bl [label="violation confirmed"]; bl->rv [label="new evidence via\ncorrection event"];
+ cl->rev [label="recall or new bad result"]; cl->sup [label="new evidence snapshot"];
+}

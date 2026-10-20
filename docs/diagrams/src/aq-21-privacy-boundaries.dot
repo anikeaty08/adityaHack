@@ -1,0 +1,16 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="21 · Trust and privacy boundaries"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ subgraph cluster_chain { label="Tamper-evident ledger (pseudonymous)"; style="dashed,rounded"; color="#1c6fc2"; fontcolor="#1c6fc2";
+  ev [label="Events: opaque ids, quantities,\ndates, hashes, coarse location cell", fillcolor="#bfe0ff", color="#1c6fc2"]; }
+ subgraph cluster_pii { label="Personal data store (per-farm keys)"; style="dashed,rounded"; color="#c0392b"; fontcolor="#c0392b";
+  pii [label="Names, phone numbers, addresses,\nexact coordinates", fillcolor="#ffc9c9", color="#c0392b"]; k [label="Per-farm encryption keys", fillcolor="#e6e6e6", color="#666666"]; pii->k [dir=back]; }
+ subgraph cluster_files { label="Object storage"; style="dashed,rounded"; color="#666666"; fontcolor="#666666";
+  s3 [label="Photos, lab reports\n(hash recorded in events)", fillcolor="#e6e6e6", color="#666666"]; }
+ ev->pii [style=dashed, label="opaque id link only"]; ev->s3 [style=dashed, label="hash"];
+ er [label="Erasure: destroy the farm key.\nDoes not alone prove every copy is gone;\nsome records may need to be kept by law.", shape=note, fillcolor="#fff3b0", color="#b8960c"]; k->er [style=dashed, arrowhead=none];
+ rec [label="Tested backups with stated RPO / RTO\nbefore the ledger is relied on", shape=note, fillcolor="#e6e6e6", color="#666666"];
+}

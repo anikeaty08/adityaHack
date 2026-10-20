@@ -1,0 +1,10 @@
+digraph { rankdir=TB;
+ graph [bgcolor="white", fontname="DejaVu Sans", pad=0.4, nodesep=0.5, ranksep=0.7, splines=true, labelloc=t, fontsize=20, label="15 · From sensor reading to event"];
+ node [shape=box, style="filled,rounded", fontname="DejaVu Sans", fontsize=13, color="#333333", penwidth=1.6, margin="0.22,0.14"];
+ edge [fontname="DejaVu Sans", fontsize=11, color="#444444", penwidth=1.5, fontcolor="#222222"];
+
+ node [fontsize=12];
+ s [label="Sensor sample\nevery interval", fillcolor="#ffd9b0", color="#c4600a"]; q [label="Quality checks\nstuck, drift, fouling,\nout of range", fillcolor="#ffd9b0", color="#c4600a"]; buf [label="Local buffer on ESP32\n(survives offline)", fillcolor="#ffd9b0", color="#c4600a"]; batch [label="Batch + batch hash\nReadingBatchRecorded", fillcolor="#bfe0ff", color="#1c6fc2"]; sign [label="Device signs batch\nEd25519", fillcolor="#bfe0ff", color="#1c6fc2"];
+ mq [label="MQTT over TLS", fillcolor="#e6e6e6", color="#666666"]; ing [label="Ingest + validate", fillcolor="#bfe0ff", color="#1c6fc2"]; tsdb [label="TimescaleDB\nreadings projection", fillcolor="#e6e6e6", color="#666666"]; ev [label="Event store\n(batch hash only)", fillcolor="#bfe0ff", color="#1c6fc2"]; rules [label="Alert rules", fillcolor="#ffc9c9", color="#c0392b"];
+ s->q->buf->batch->sign->mq->ing; ing->ev; ing->tsdb; tsdb->rules;
+}
