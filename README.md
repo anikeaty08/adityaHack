@@ -1,588 +1,362 @@
 # AquaSentinel
 
-**An offline-first AI pond guardian for shrimp farmers.** AquaSentinel watches pond water around the clock with real sensors, predicts disease outbreaks and night-time oxygen crashes before they happen, switches aerators automatically, and talks to farmers in six Indian languages, with or without internet.
+**A pond-to-port health and compliance system for shrimp farms.** AquaSentinel watches pond water with real sensors, keeps aerators running even when the internet is down, and keeps a tamper-evident record of every treatment and lab result, so a harvest that would carry banned-drug residue is blocked before it leaves the farm.
 
-> Built for the Agritech & Aquaculture hackathon track: **Smart Shrimp Disease & Water-Quality Monitoring**.
-> "AquaSentinel" is a working name.
-
-![System context](docs/diagrams/01-system-context.png)
+> **Status: design stage.** There is no code in this repository yet. Everything below is a proposed design, not a validated product. Claims about regulations and competitors were checked against public sources on 21 Oct 2026 (see [References](#references)); items that still need primary documents are listed in [Open items](#open-items).
 
 ---
 
 ## Contents
 
 1. [The problem](#1-the-problem)
-2. [What AquaSentinel does](#2-what-aquasentinel-does)
-3. [System design](#3-system-design)
-4. [How the main flows work](#4-how-the-main-flows-work)
-5. [AI and machine learning](#5-ai-and-machine-learning)
-6. [The AI assistant (Claude)](#6-the-ai-assistant-claude)
-7. [Offline-first and downloadable packs](#7-offline-first-and-downloadable-packs)
-8. [Languages](#8-languages)
-9. [Hardware](#9-hardware)
-10. [Tech stack](#10-tech-stack)
-11. [Datasets](#11-datasets)
-12. [Security and the crop passport](#12-security-and-the-crop-passport)
-13. [Deployment](#13-deployment)
-14. [Repository layout](#14-repository-layout)
-15. [Getting started](#15-getting-started)
-16. [Roadmap](#16-roadmap)
-17. [References and research credits](#17-references-and-research-credits)
-18. [License](#18-license)
+2. [What AquaSentinel does and does not claim](#2-what-aquasentinel-does-and-does-not-claim)
+3. [How it works](#3-how-it-works)
+4. [Architecture](#4-architecture)
+5. [Edge safety: protecting the pond](#5-edge-safety-protecting-the-pond)
+6. [Compliance: protecting the harvest](#6-compliance-protecting-the-harvest)
+7. [Lots, evidence and trust](#7-lots-evidence-and-trust)
+8. [The event log](#8-the-event-log)
+9. [Who uses it](#9-who-uses-it)
+10. [Features and roadmap](#10-features-and-roadmap)
+11. [Security and privacy](#11-security-and-privacy)
+12. [Pilot plan](#12-pilot-plan)
+13. [Planned repository layout](#13-planned-repository-layout)
+14. [Open items](#open-items)
+15. [References](#references)
+16. [License](#license)
 
 ---
 
 ## 1. The problem
 
-Disease is the largest money leak in Indian shrimp farming, and it is usually noticed only after shrimp start dying.
+Disease is the biggest money leak in Indian shrimp farming, and it leads to a second problem: **panic treatment with banned antibiotics, then export rejection.**
 
-| Fact | Number | Source |
+| Fact | Figure | Source |
 |---|---|---|
-| Chance that a farm suffers an infectious disease (survey of 909 farms, 23 coastal districts) | 49% | [R1] |
-| Shrimp lost to disease in India each year | about 0.21 million tonnes, worth about US$1.02 billion | [R1] |
-| Loss caused by EHP alone | about US$571 million a year | [R2] |
-| Andhra Pradesh share of India's vannamei output | 77.8% | [R3] |
-| Feed share of production cost on intensive farms | roughly 60 to 67% | industry estimates |
-| 2025 export rejections linked to antibiotic residues (EU, US, Japan) | 43% of rejections, a government figure | [R4] |
+| Probability a surveyed farm had an infectious disease (909 farms, 23 coastal districts) | 49%, costing about 0.21 million tonnes and US$1.02 billion a year | ICAR survey |
+| 2025 EU, US and Japan shrimp rejections linked to chloramphenicol and nitrofuran residues | 43% of rejections, traced to 40+ farms | MPEDA, via a CDSCO letter |
+| Share of those implicated farms in Andhra Pradesh | 74% (Odisha 13%, West Bengal 8.7%, Gujarat 4.3%) | MPEDA, via press reports |
+| Antibiotic-related US shrimp refusals from BAP-certified facilities, Q1 2026 | 85.7% | Southern Shrimp Alliance analysis (a US industry group, so treat as an advocacy figure) |
 
-Three problems sit underneath these numbers:
+Three things make this hard to fix:
 
-1. **Night oxygen crashes.** Dissolved oxygen (DO) falls after sunset and is lowest before dawn. Farms pay a night watchman or run aerators all night, which wastes electricity [R5].
-2. **Disease triggers are environmental and visible early.** White spot outbreaks follow sudden temperature drops, heavy rain and salinity falls [R6][R7]. The warning signs exist days before mortality.
-3. **Diagnosis is slow and some diseases are invisible.** PCR needs a lab. EHP shows up mainly as slow growth and uneven sizes, not as visible lesions [R8][R9].
+1. **Visible symptoms appear late.** Photo-based disease detection is triage, not diagnosis. PCR confirms pathogens, but PCR is not a residue test.
+2. **Residue tests are a different assay.** India's pre-harvest test uses ELISA screening, with positives confirmed by LC-MS/MS. It is mandatory only for EU-bound shrimp, and a negative result clears only the compounds tested.
+3. **Paper certification does not catch violations.** A paper trail proves what someone wrote, not what happened in the pond.
 
-Published research already reaches 95%+ accuracy on shrimp disease photos [R10][R11]. What is missing is a system that **fuses sensors, weather, growth and photos**, warns **before** symptoms, works **offline**, and tells the farmer **what to do** in their own language.
+Note on the 74%: it is Andhra Pradesh's share of the **implicated farms**, not of rejections, although some headlines say otherwise.
 
 ---
 
-## 2. What AquaSentinel does
+## 2. What AquaSentinel does and does not claim
 
-| # | Feature | Works offline? |
+**It claims** to reduce compliance risk and improve traceability by:
+
+- giving earlier warning of low oxygen and equipment failure,
+- keeping a tamper-evident ledger of treatments and lab evidence,
+- enforcing withdrawal periods with a deterministic rule engine,
+- gating harvests so unclear or failing evidence never turns green, and
+- giving exporters lot-level evidence they can verify.
+
+**It does not claim** to:
+
+- guarantee residue-free shrimp. A complete digital record is not proof of physical safety.
+- replace government testing or clearance. A certificate is AquaSentinel evidence, not a government clearance.
+- let AI decide. AI reads labels, flags risks and explains results. It never clears a harvest, and it never recommends drugs or doses.
+- call a crop "antibiotic-free". The passport states the evidence held and whether it is independently verified.
+
+A hash chain proves a record was not changed after it was written. It does not prove the record was true. That is why the design depends on invoice reconciliation, signed lab results, technician checks and sampling.
+
+---
+
+## 3. How it works
+
+AquaSentinel runs **two independent paths** on one platform:
+
+| | Safety path | Compliance path |
 |---|---|---|
-| **Pond monitoring** | | |
-| 1 | Live DO, pH, temperature, salinity and turbidity per pond | Yes |
-| 2 | Automatic aerator control with safety rules on the ESP32 | Yes |
-| 3 | Night oxygen crash forecast (DO at 4 am, predicted at 9 pm) | Yes |
-| 4 | Power-cut alert: the ESP32 detects mains failure and alerts the farmer to start the generator | Yes, by SMS |
-| 5 | Aerator health: a current sensor detects a stopped or failing motor | Yes |
-| 6 | Sensor self-check for fouled or drifting probes, plus calibration reminders | Yes |
-| 7 | Toxic ammonia calculated from pH, temperature and salinity, so no ammonia probe is needed | Yes |
-| **Disease and health** | | |
-| 8 | Disease outbreak risk 48 hours ahead | Partly (uses cached weather) |
-| 9 | Photo diagnosis with a heatmap (white spot, black gill, healthy, other) | Yes |
-| 10 | Plain-language explanation of the photo result from a vision-language model | Yes, small model; better online |
-| 11 | EHP slow-growth detector | Yes |
-| 12 | Water colour check from a photo (plankton bloom type) | Yes |
-| 13 | LAMP / PCR test logging and lab finder | Partly |
-| 14 | Treatment guidance without antibiotics, with escalation to an expert | Partly |
-| **Feed and growth** | | |
-| 15 | Feed tray photo check (0, 25, 50 or 100% leftover) | Yes |
-| 16 | Feed advisor that cuts the ration when DO is low or risk is high | Yes |
-| 17 | Shrimp count and size from a photo, giving biomass and FCR automatically | Yes |
-| 18 | Growth curve compared with the expected curve | Yes |
-| 19 | Optional hydrophone for detecting feeding activity by sound | Yes |
-| **Farm business** | | |
-| 20 | Expense, inventory and profit tracker | Yes |
-| 21 | Market price tracker and price forecast | Online |
-| 22 | Harvest planner: best harvest date from growth, price and risk | Partly |
-| 23 | Crop calendar and task reminders | Yes |
-| 24 | Pond preparation and seed (PL) quality checklists | Yes |
-| 25 | PDF reports for bank loans and insurance | Yes |
-| 26 | Government schemes and insurance information from the knowledge base | Partly |
-| **AI assistant** | | |
-| 27 | Voice chatbot in six languages | Yes |
-| 28 | Daily morning voice briefing per pond | Yes |
-| 29 | Fresh information through web search | Online |
-| 30 | Farm memory: the assistant remembers ponds and past problems | Yes |
-| **Community and trade** | | |
-| 31 | Anonymous neighbourhood outbreak map | Online |
-| 32 | Antibiotic-free crop passport with a signed QR code | Yes; verified online |
-| 33 | Pond-to-port handoff to cold-chain tracking | Online |
-| **Platform** | | |
-| 34 | Multiple ponds, multiple users, roles (owner, worker, technician) | Yes |
-| 35 | Downloadable model and language packs | Yes |
-| 36 | SMS alerts from the ESP32 with no internet | Yes |
-| 37 | Web dashboard for exporters and fisheries officers | Online |
+| Protects | The pond today | The harvest's marketability |
+| Runs on | ESP32 at the pond | Backend |
+| Needs internet? | **No** | Yes (the app works offline and syncs later) |
+| Decided by | Local rules | Deterministic, versioned rule engine |
+| Fails | Toward aerator **on** | Toward **review required**, never toward green |
+
+The safety path never waits on the cloud. The compliance path never trusts AI.
 
 ---
 
-## 3. System design
+## 4. Architecture
 
-### 3.1 Containers
+A modular monolith (one deployable backend with clear internal modules) plus background workers. No Kafka, Kubernetes or microservices until real load demands them.
 
-Five zones: pond hardware, client apps, gateway, Python backend services, and data stores. External APIs are called only from the backend, so no API key ever ships inside the app.
+**4.1 System overview.** Who talks to what. Two entry points feed one backend; the pond keeps working even if everything on the right is offline.
 
-![Container architecture](docs/diagrams/02-container-architecture.png)
+![System overview](docs/diagrams/aq-01-overview.png)
 
-### 3.2 Data pipeline
+**4.2 Backend core.** What happens to an event once it arrives. Read it top to bottom: events go in, a gate decision and a signed passport come out, and AI never sits on the decision path.
 
-Sensor readings travel over MQTT to an ingest worker. They are validated and quality-checked, stored in a TimescaleDB hypertable, rolled up into 5-minute, hourly and daily aggregates, then turned into model features. Bad readings are flagged, never silently dropped.
+![Backend core](docs/diagrams/aq-02-core.png)
 
-![Data pipeline](docs/diagrams/05-data-pipeline.png)
-
-### 3.3 Database schema
-
-One PostgreSQL database holds relational data, time-series data (TimescaleDB) and vector embeddings for the knowledge base (pgvector). Every table carries `created_at`, `updated_at` and a `version` column used for offline sync merges.
-
-![Database schema](docs/diagrams/06-database-schema.png)
+**Stack:** FastAPI, PostgreSQL with TimescaleDB, S3-compatible object storage, MQTT over TLS, Flutter for the farmer app, Next.js for the exporter and admin portals. No blockchain: per-stream hash chains with periodic Merkle anchoring give tamper evidence without one.
 
 ---
 
-## 4. How the main flows work
+## 5. Edge safety: protecting the pond
 
-### 4.1 App user flow
+Dissolved oxygen (DO) drops after sunset and is lowest before dawn. The ESP32 controls aeration **locally**, in two tiers:
 
-![User flow](docs/diagrams/09-user-flow.png)
+- a **soft control band with hysteresis** (for example on below 4 mg/L, off above 5) to avoid relay chatter, and
+- a **hard floor of 3 mg/L** that forces the aerator on regardless of any cloud command.
 
-### 4.2 Offline sync (outbox pattern)
+Both levels are configurable per farm and species. The published evidence on aeration setpoints is thin (one 2024 trial found no production difference between setpoints of 2.5, 3.5 and 4.5 mg/L, but higher setpoints cost more electricity), so both levels must be validated on real ponds.
 
-Every change is written to the phone's database first, together with an idempotency key, so the farmer never waits for the network. A sync worker pushes the outbox when the connection returns and pulls server changes using a cursor. Sending the same key twice never creates a duplicate.
+![Edge safety loop](docs/diagrams/aq-03-edge.png)
 
-![Offline sync](docs/diagrams/07-offline-sync.png)
+**Hardware requirements, not firmware features:**
 
-### 4.3 Alert lifecycle
-
-Alerts are deduplicated, escalate from push to SMS to a phone call if nobody acknowledges them, and close only when the condition has been stable for 30 minutes. Critical oxygen events are handled locally by the ESP32 before the cloud is involved.
-
-![Alert lifecycle](docs/diagrams/10-alert-lifecycle.png)
-
-### 4.4 Night oxygen forecast and aerator control
-
-![DO control loop](docs/diagrams/13-do-control-loop.png)
-
-### 4.5 Disease detection from a photo
-
-![Disease pipeline](docs/diagrams/12-disease-pipeline.png)
-
----
-
-## 5. AI and machine learning
-
-### 5.1 Model map
-
-![ML model map](docs/diagrams/11-ml-model-map.png)
-
-### 5.2 Models
-
-| Model | Task | On the phone | On the server |
-|---|---|---|---|
-| Disease classifier | Healthy / white spot / black gill / other | EfficientNet-B0 or MobileNetV3, int8 [M1][M2] | ConvNeXt-Tiny |
-| Lesion detector | Boxes around lesions | YOLO-nano | Larger YOLO or U-Net |
-| Size and count | Shrimp count and length, converted to weight with W = a·L^b | YOLO-nano + regressor | Same, larger |
-| Water colour classifier | Plankton / bloom type | MobileNetV3-Small | Same |
-| Feed tray classifier | Leftover feed level | MobileNetV3-Small | Same |
-| DO forecaster | Night DO forecast | LightGBM [M3] or tiny GRU | Temporal Fusion Transformer [M4] |
-| Sensor anomaly | Odd readings | Isolation Forest [M5] | LSTM autoencoder |
-| Outbreak risk | 48-hour risk | XGBoost [M6] + SHAP [M7] | Same; graph neural network later |
-| Feeding sound | Feeding activity from audio | Small CNN on mel-spectrograms | Same |
-| Out-of-distribution check | Rejects photos that are not shrimp | Energy score [M8] | Same |
-| Vision-language explainer | Explains a photo result | Small VLM (SmolVLM / Moondream class) | Claude (vision) |
-| Assistant LLM | Conversation and tool use | 1B model, 4-bit GGUF, LoRA-tuned [M9] | Claude Opus 5.5 |
-| Embeddings | Knowledge search | multilingual-e5-small | bge-m3 [M10] |
-| Speech-to-text | Voice input | Whisper-small [M11] or Conformer-based IndicConformer [M12] via sherpa-onnx | Bhashini |
-| Text-to-speech | Voice output | VITS-based Indic voices via sherpa-onnx | Bhashini |
-| Translation | Language bridge | IndicTrans2, distilled [M13] | IndicTrans2, full |
-| Voice activity detection | Detects speech start and end | Silero VAD | — |
-
-### 5.3 Neural network architectures
-
-![Neural networks](docs/diagrams/15-neural-networks.png)
-
-### 5.4 Algorithms
-
-<details>
-<summary><b>Sensor data</b></summary>
-
-- **Calibration:** two-point pH; DO compensated for temperature and salinity using the Garcia–Gordon oxygen solubility equations [M14]; salinity from conductivity using the PSS-78 standard.
-- **Filtering:** median filter for spikes, then a Kalman filter [M15].
-- **Fault detection:** range and stuck-value checks, CUSUM for slow drift [M16], Isolation Forest or an LSTM autoencoder for unusual combinations.
-- **Missing data:** short gaps interpolated; long gaps flagged, never invented.
-
-</details>
-
-<details>
-<summary><b>Oxygen and aerators</b></summary>
-
-- **Forecast:** a physics baseline for night-time respiration plus a LightGBM residual model (TFT on the server). It predicts the low end of the range so it errs on the safe side.
-- **Uncertainty:** split conformal prediction gives a calibrated 90% band; decisions use its lower edge [M17].
-- **Scheduling:** a greedy scheduler finds the fewest aerator-hours that keep DO above 4 mg/L (the critical level used in [R12]). Hysteresis (on below 4, off above 5) prevents relay chatter.
-- **Safety override:** the ESP32 always switches aerators on if live DO drops below 3 mg/L. Cloud commands cannot override this.
-
-</details>
-
-<details>
-<summary><b>Disease and growth</b></summary>
-
-- **Photo pipeline:** quality gate, then out-of-distribution rejection [M8], then the classifier with test-time augmentation, then temperature scaling so the confidence is honest [M18], then a Grad-CAM heatmap [M19].
-- **Training:** transfer learning, strong augmentation, focal loss for class imbalance [M20], cross-validation split by farm.
-- **Outbreak risk:** XGBoost on stress features (24-hour temperature change, salinity change, rainfall, minimum DO, pH swing, toxic ammonia, days of culture, neighbour reports), explained with SHAP. Until enough labelled outbreaks exist, it starts as an expert-weighted score based on the stressors in [R6][R7].
-- **EHP:** expected growth from a Gompertz / von Bertalanffy curve; flags low average daily gain, a widening size spread, and CUSUM drift between actual and expected weight [R8][R9].
-- **Toxic ammonia:** un-ionized ammonia fraction from pH, temperature and salinity, following the US EPA saltwater ammonia method [R13].
-
-</details>
-
-<details>
-<summary><b>Fusion, feed and harvest</b></summary>
-
-- **Risk fusion:** sub-risks combined with a noisy-OR into one 0–100 score plus the top three reasons.
-- **Alert logic:** severity levels, deduplication, cooldown and escalation.
-- **Feed:** a standard feed table by average body weight, adjusted for DO, temperature and tray leftovers; a contextual bandit learns per pond later.
-- **Harvest planner:** growth forecast × price forecast × disease risk, choosing the date with the best expected profit.
-
-</details>
-
-<details>
-<summary><b>Platform</b></summary>
-
-- **Offline sync:** outbox pattern, idempotency keys, last-write-wins with per-field merge, exponential backoff.
-- **Pack delivery:** version manifest, SHA-256 check, resumable chunked downloads, device capability scoring.
-- **Outbreak map privacy:** geohash grid with k-anonymity (an area is shown only when it holds at least 5 farms) and ST-DBSCAN to find clusters [M21]. Inspired by the Ecuador shrimp early-warning system [R14].
-- **Crop passport:** hash-chained log with an Ed25519 signature. Tamper-evident without a blockchain.
-
-</details>
-
-### 5.5 MLOps
-
-Data is split **by farm, not by photo**, so the evaluation reflects farms the model has never seen. A model is promoted only if it beats the current one, then it is compressed (distillation [M22], pruning, int8 or 4-bit quantization), exported to ONNX, LiteRT or GGUF, shadow-tested, and rolled out to 10% of farms first.
-
-![MLOps](docs/diagrams/14-mlops.png)
-
----
-
-## 6. The AI assistant (Claude)
-
-![Agent graph](docs/diagrams/16-agent-graph.png)
-
-The assistant is a LangGraph agent following a ReAct-style loop [M23]: it thinks, calls tools, reads the results and answers.
-
-| Concern | Choice |
-|---|---|
-| Online model | **Claude Opus 5.5** (`claude-opus-5-5`) through the Anthropic API, using the official `anthropic` Python SDK |
-| Reasoning | Adaptive thinking (`thinking: {type: "adaptive"}`), effort set per route |
-| Long answers | Streaming responses |
-| Cost and speed | Prompt caching on the stable system prompt and tool definitions |
-| Long chats | Server-side compaction (beta) so conversations can run past the context window |
-| Memory | Short-term chat context; long-term farm facts stored in Postgres (`agent_memory`) and exposed through Claude's memory tool (`memory_20250818`); rolling summaries of long chats |
-| Web search | Claude's server-side web search tool (`web_search_20260209`), plus Tavily and Google Programmable Search as extra tools |
-| Reliability | Server-side refusal fallbacks enabled; retries with backoff on rate limits |
-| Offline model | 1B-class open model, LoRA-tuned on shrimp-farming Q&A distilled from Claude, quantized to 4-bit GGUF, run with llama.cpp |
-| Key handling | `ANTHROPIC_API_KEY` lives only on the server. The app never sees it. |
-
-**Tools available to the agent**
-
-| Tool | What it does | Needs confirmation |
-|---|---|---|
-| `get_sensor_data` | Latest and historical readings for a pond | No |
-| `get_risk_score` | Current risk score with top reasons | No |
-| `get_do_forecast` | Tonight's oxygen forecast and band | No |
-| `diagnose_photo` | Runs the disease pipeline on a photo | No |
-| `knowledge_base` | RAG search over ICAR-CIBA, MPEDA, CAA and FAO guidance | No |
-| `web_search` | Claude web search, Tavily, Google | No |
-| `weather_forecast` | Open-Meteo forecast for the farm | No |
-| `market_price` / `find_lab` | Prices and nearby testing labs | No |
-| `control_aerator` | Switches aerators through the ESP32 | **Yes** |
-| `set_reminder` / `log_entry` | Tasks and farm log entries | **Yes** |
-| `crop_passport` | Adds an entry or shows the QR | **Yes** |
-
-**Guardrails** block advice involving banned antibiotics (for example chloramphenicol and nitrofurans, banned in Indian aquaculture since 2025 [R4]), check dosages against the knowledge base, and require sources for factual claims.
-
-### 6.1 Knowledge pipeline (RAG)
-
-Retrieval-augmented generation [M24] with hybrid search (BM25 plus vectors), a reranker, and answers grounded only in the retrieved chunks.
-
-![RAG pipeline](docs/diagrams/17-rag-pipeline.png)
-
-### 6.2 Voice pipeline
-
-![Voice pipeline](docs/diagrams/18-voice-pipeline.png)
-
----
-
-## 7. Offline-first and downloadable packs
-
-Like offline maps in a game, farmers download packs once over Wi-Fi and the app keeps working without internet. The ESP32 safety rules never depend on the phone or the network.
-
-| Pack | Contents | Approx. size | Default |
-|---|---|---|---|
-| Core | Disease classifier, DO forecaster, risk engine, toxic ammonia, EHP check | 10–30 MB | Bundled with the app |
-| Language (one per language) | Speech-to-text, text-to-speech, translation | 150–400 MB | Optional |
-| Assistant | 1B LLM (4-bit) + small knowledge index | 0.7–1 GB | Optional |
-| Vision explainer | Small VLM | 0.5–2 GB | Optional; phones with 6 GB+ RAM |
-
-![Pack download](docs/diagrams/08-pack-download.png)
-
-When the phone is back online, answers produced offline are re-checked by the larger server models, and the farmer is notified if a result changes.
-
----
-
-## 8. Languages
-
-Hindi, Telugu, Tamil, Bengali, Marathi and English.
-
-- App text is bundled for all six languages (Flutter ARB files with Noto fonts).
-- Voice works offline once that language pack is downloaded, and always works online.
-- Offline, a small LLM answers in English and IndicTrans2 translates in and out, so one translation model covers every language.
-- A per-language glossary keeps terms like "DO", "white spot" and local disease names correct in speech recognition.
-- Alert texts are reviewed by native speakers before release.
-
----
-
-## 9. Hardware
-
-![Hardware block diagram](docs/diagrams/03-hardware-block.png)
-
-### 9.1 Bill of materials (per pond node)
-
-| Part | Example | Purpose |
-|---|---|---|
-| Controller | ESP32-S3 dev board | Sensors, rules, BLE, Wi-Fi, MQTT |
-| DO probe | Galvanic DO probe (for example DFRobot Gravity DO) | Dissolved oxygen |
-| pH probe | Industrial pH probe + Gravity pH board | pH |
-| EC probe | Gravity EC (K=10 for brackish water) | Salinity |
-| Temperature | DS18B20 waterproof | Water temperature |
-| Turbidity | Analog turbidity sensor | Turbidity |
-| Rain + air temperature | Rain sensor + air temperature sensor | White spot trigger detection offline |
-| ADC | ADS1115 16-bit | Precise analog readings |
-| Isolators | Analog signal isolators, one per probe | Stops probes in the same water interfering with each other |
-| Aerator switching | Relay or SSR driving a contactor | Aerator motors draw too much current for a bare relay |
-| Current sensor | CT clamp | Detects a stopped or failing aerator |
-| Mains detection | Opto-isolated AC detector | Power-cut alerts |
-| Cellular | 4G module (A7670 / SIM7600) | SMS alerts without internet; SIM800L is 2G-only and 2G coverage is shrinking |
-| Long range (optional) | LoRa SX1276 | Ponds far from the house |
-| Time and storage | DS3231 RTC + on-board flash | Timestamps and an offline buffer |
-| Power | 12 V SMPS + LiFePO4 backup + buck converters | Keeps running through power cuts |
-| Enclosure | IP65 box, surge protection, conformal coating | Survives a pond-side environment |
+- A relay that fails ON still cannot keep an aerator running through a mains outage, so the design needs a **backup power strategy** or a stated and tested degraded mode.
+- A relay command is not proof the aerator started. The **current sensor** gives feedback.
+- A **failure-mode table** must cover invalid or stale readings, a disconnected sensor, a welded relay, motor failure, controller reboot and power loss.
+- **Sensor self-check** flags fouled, stuck or drifting probes. **Calibration reminders** follow a per-probe schedule. An optical DO probe is recommended for the pilot, because galvanic probes drift and foul quickly and need frequent calibration, while optical ones hold calibration better but still need regular checks.
+- **Alerts** (low DO, power cut, aerator fault, missing heartbeat) go by push, escalate, and also go by **SMS over a 4G module** when there is no internet. A reminder or SMS tells the farmer to act; it never replaces the local control loop.
+- Firmware updates are **signed**, with rollback. Configuration changes are signed, with safe bounds.
 
 > Mains wiring for the contactor and aerators must be done by a licensed electrician.
 
-### 9.2 Firmware
-
-![Firmware tasks](docs/diagrams/04-firmware-tasks.png)
-
 ---
 
-## 10. Tech stack
+## 6. Compliance: protecting the harvest
 
-| Layer | Technology |
+### 6.1 From treatment to signed passport
+
+![Treatment logging to harvest clearance](docs/diagrams/aq-04-treatment.png)
+
+Two deterministic checks guard the path. The rule-pack check runs when a treatment is logged. The harvest gate runs again at harvest and re-reads the whole log.
+
+### 6.2 The harvest gate
+
+The gate is a pure function of a frozen input set. **It never returns CLEARED by default.**
+
+| Condition | Result |
 |---|---|
-| Firmware | PlatformIO, Arduino framework on FreeRTOS, MQTT over TLS, BLE GATT, OTA updates |
-| Mobile app | Flutter, Riverpod, go_router, Drift (SQLite) + SQLCipher, flutter_blue_plus, mqtt_client, dio, background_downloader, WorkManager, fl_chart, flutter_intl |
-| On-device AI | LiteRT (TFLite), ONNX Runtime, llama.cpp, sherpa-onnx |
-| Web dashboard | Flutter Web |
-| Backend | Python, FastAPI, Pydantic, SQLAlchemy, Arq workers, WebSockets |
-| AI agent | LangGraph + Anthropic Python SDK (Claude Opus 5.5) |
-| IoT broker | EMQX |
-| Databases | PostgreSQL 16 + TimescaleDB + pgvector, Redis |
-| Object storage | MinIO (S3-compatible) |
-| Auth and push | Firebase Auth (phone OTP), Firebase Cloud Messaging |
-| External APIs | Anthropic, Open-Meteo, Tavily, Google Programmable Search, Bhashini |
-| ML training | PyTorch, timm, Albumentations, LightGBM, XGBoost, scikit-learn, Optuna, SHAP, MLflow, PEFT / Unsloth, llama.cpp quantization |
-| DevOps | Docker Compose, Caddy, GitHub Actions, Prometheus, Grafana, Sentry |
+| A mandatory rule fails (banned drug, open withdrawal clock, residue above limit) | `BLOCKED` |
+| Required evidence is missing, ambiguous, inconclusive, invalid or unverified | `REVIEW REQUIRED` |
+| A trust input is compromised (revoked key, failed signature) | `REVIEW REQUIRED` |
+| An unexpected error occurs during evaluation | `REVIEW REQUIRED` |
+| Every mandatory rule passes on verified evidence | `CLEARED` |
+
+![Harvest gate states](docs/diagrams/aq-05-gate.png)
+
+**Correction is not override.** Authorized people may correct evidence, resolve a product identity and trigger a fresh evaluation, and the gate then decides again. No override turns a failed mandatory rule into CLEARED. A legally permitted exception exists only as an explicit rule in the rule pack, with its authority cited. Corrections need dual approval.
+
+### 6.3 Rule packs
+
+A rule pack holds the banned list, maximum residue limits (MRLs) per market and withdrawal clocks. Each pack is versioned, signed and effective-dated. Each rule needs a named authoritative source and owner, the market, species, formulation and treatment context it applies to, and the legal trigger date (treatment, harvest or export).
+
+Every gate result stores the pack id, ruleset version, engine version, evidence snapshot, evaluation time and reason codes, so any past decision can be replayed. Publishing a new pack re-evaluates open lots.
+
+Sources for the first pack: the Coastal Aquaculture Authority's banned-substance and permissible-residual-level lists (nil for chloramphenicol and nitrofurans; 0.1 ppm for tetracycline and oxytetracycline), the Commerce Ministry's May 2025 amendment, the March 2025 health ministry notification, FSSAI notifications, and each destination market's limits and import alerts. Press reports of these lists disagree on counts, so every entry must be checked against the primary document.
+
+The **withdrawal clock** needs the full treatment record: product identity and formulation, dose and units, species, route, administration time, and the label or regulatory basis. If any input is missing or uncertain, the gate fails closed to `REVIEW REQUIRED`.
+
+### 6.4 Certificate lifecycle
+
+A certificate is tied to one lot, one evidence snapshot and one rule-pack version. Five things stay separate: current eligibility, the decision at issuance, certificate validity (valid, superseded or revoked), recall status, and physical shipment status. New or corrected evidence, a rule-pack change, a revoked key or a recall each trigger re-evaluation. The QR page shows **live** status; an offline cached status is shown as **stale**.
 
 ---
 
-## 11. Datasets
+## 7. Lots, evidence and trust
 
-| Need | Source | Notes |
+### 7.1 Lot lineage
+
+Treatments attach to a **crop cycle**, never directly to a lot, and every lot inherits from its source. Every treatment also carries an explicit **scope** (whole pond, a section, or a defined population).
+
+![Lot lineage](docs/diagrams/aq-06-lineage.png)
+
+If one treated pond is harvested into three lots, all three inherit its treatment history. If two lots merge, the result carries the evidence of both, and its restrictions are computed by the applicable rule, never by a blanket "strictest value" shortcut. A passing residue result is never carried onto a merged lot unless the sampling and compliance rules permit that inference.
+
+### 7.2 What each claim is backed by
+
+| Claim | Asserted by | Backed by | Limit |
+|---|---|---|---|
+| Treatment was applied | Farmer | Label photo, invoice and inventory reconciliation, technician check | Cannot prove every application was logged |
+| Water conditions | Device | Calibrated probe, sensor-quality checks | Only as good as the calibration |
+| Pathogen status | Lab or technician | Signed PCR report | Says nothing about drug residue |
+| Residue below limit | Lab | Signed report: sample ID, collection time, lot link, method, analyte, units | Valid only if the sample came from that lot |
+| Harvest eligible | Rule engine | Versioned rules and an evidence snapshot | Correct only if the rule pack is correct |
+| Certificate | AquaSentinel | Signature over lot, evidence snapshot and rule version | AquaSentinel evidence, not government clearance |
+
+**Lab evidence is not automatically enough.** The rule pack defines accepted laboratories, suitable methods and analytes, reporting limits, sample-custody checks, and how invalid or inconclusive tests are handled. Residue evidence carries one of six statuses: `NOT_DETECTED`, `DETECTED_WITHIN_LIMIT`, `DETECTED_ABOVE_LIMIT`, `INCONCLUSIVE`, `INVALID`, `INCOMPLETE`. Only the first two can support clearance, and only where the rules permit. `NOT_DETECTED` means not detected by that method at that reporting limit, never proven absent.
+
+MPEDA's pre-harvest test is modelled as its own evidence type with validity dates. It covers a fixed list of compounds and is mandatory only for EU-bound shrimp.
+
+### 7.3 Invoice and inventory reconciliation
+
+Capture each purchase (invoice photo, product identity, quantity, batch), keep a stock ledger, compare expected usage with logged treatments, and send unexplained gaps to a technician's review queue. This shows that a product was bought and flags stock that vanished without a logged treatment. It cannot prove a dose was applied or that every application was recorded.
+
+---
+
+## 8. The event log
+
+Every fact the system relies on is an **immutable event**. Tables, dashboards and certificates are projections that can be rebuilt by replaying events. A correction is a new event that points at the one it corrects.
+
+The full design is in the Event Schema doc. In short:
+
+- **One envelope, 27 fields**, with typed payloads. The author fills some fields; the server assigns `stream_seq`, `received_at`, `previous_hash` and `event_hash`.
+- **Three clocks:** `occurred_at` (claimed), `recorded_at` (device) and `received_at` (server). Only `received_at` is trusted. An unverified timestamp can only make a withdrawal clock longer, never shorter.
+- **36 event types** across four streams (`farm`, `cycle`, `lot`, `rulepack`). Raw sensor rows are batched into `ReadingBatchRecorded` events with a batch hash.
+- **Per-stream hash chains**, signed with Ed25519 where required (devices, labs, the passport service, rule-pack approvers), with periodic Merkle roots and an external timestamp.
+
+![Event ingestion path](docs/diagrams/aq-07-ingest.png)
+
+Rejected events are not stored in the chain (the attempt is logged operationally). Flagged events are kept and raise a review item. Evidence events (treatments, tests, harvests, lot changes) are never merged or overwritten; conflicts from offline devices become review items.
+
+---
+
+## 9. Who uses it
+
+| Role | What they do |
+|---|---|
+| **Farmer** (owns the data) | Sets up ponds and crop cycles, logs readings and treatments (offline), acts on alerts, requests harvest, issues and revokes exporter consent |
+| **Technician** (verifier) | Verifies entries against invoices, collects samples, logs PCR and residue results, resolves reviews, calibrates probes |
+| **Exporter or processor** (consented) | Receives a revocable grant, views lot evidence and status, scans the QR page, raises queries or recall requests |
+| **Admin** (governance) | Curates and signs rule packs, approves corrections, runs recalls, registers keys |
+
+Tenant = farm. Users are modelled separately from farms through farm memberships, so one person can belong to more than one farm or hold a technician or lab relationship. Tenant isolation applies to API endpoints, background jobs, exports and object storage, not only the dashboard.
+
+Exporters see a lot only through a consent grant scoped to that lot. Revoking consent stops later access through AquaSentinel; it cannot delete copies already downloaded, and the consent screen says so.
+
+---
+
+## 10. Features and roadmap
+
+**Tier 1: the MVP (19 features)**
+
+- Farm, pond and crop-cycle setup; lot lineage (split and merge); roles and farm-scoped access
+- Sensor readings (real or simulated); two-tier aerator safety rules; sensor self-check and calibration reminders; SMS fallback for critical alerts; critical alerts with escalation and dead-man heartbeat
+- Offline capture and sync
+- Treatment logging with label-photo OCR and mandatory human confirmation; invoice and inventory reconciliation; product normalisation and withdrawal clocks
+- Pathogen (PCR) test logging; residue test logging (including MPEDA pre-harvest certificates)
+- Harvest gate; event history; crop passport with signed QR; consent-based exporter portal
+- Daily pond briefing and task reminders (a read-only view of overnight minimum DO, equipment faults, withdrawal deadlines, open reviews and sampling due)
+
+**Tier 2: added selectively.** DO forecast (advisory, unproven until validated on real sensors); rule-based risk indicators (can use rain and air temperature); toxic ammonia estimate from pH, temperature and salinity (method to verify); photo observation log; experimental photo triage; manual sampling and growth; seed (PL) source records; own-pond map; evidence reports for buyers, banks and insurers; treatment-cost tracking; online voice assistant (English plus one local language).
+
+**Tier 3: deferred, with a trigger.**
+
+| Feature | Why it waits |
+|---|---|
+| Expense tracker, price forecast, harvest planner | Generic and crowded; models not yet reliable |
+| Regional outbreak map | Needs enough participating farms and privacy controls. Thresholds (such as 5+ farms per area) are proposals, to be set from real disclosure risk |
+| Hydrophone feeding | Extra hardware; acoustic feeding already exists in the market; no residue benefit |
+| Photo-based shrimp counting | No good public dataset; turbid water |
+| Offline LLM or VLM | A 1B model cannot reliably enforce dosing guardrails; use retrieval-only offline answers |
+| Government schemes knowledge base | Only with sourced, dated content |
+
+**Competitors.** AquaExchange (IoT automation, acoustic feeding, microscopy-based health AI, finance, market linkage) and Aquaconnect (FarmMOJO advisory and records, marketplace, credit) are real and well established. Both mention traceability. I found no withdrawal-period enforcement or harvest gating on their public pages, though that was not an exhaustive check.
+
+---
+
+## 11. Security and privacy
+
+- **Integrity, not truth.** Hash chains show records were not changed after being written. Truthfulness comes from the evidence flows in section 7.
+- **Signing.** Devices sign telemetry, labs sign reports, and the passport service signs certificates with a KMS key. A key registry lets anyone verify a certificate without trusting the app. A compromised key invalidates only signatures made after the compromise time, and every certificate resting on them goes back through the gate. Manual key rotation from the start; automation later.
+- **Auditor verification.** An outside auditor can recompute hashes, walk each chain, check signatures against the key registry, and verify Merkle paths and timestamp proofs.
+- **Personal data stays outside the chain.** Events hold opaque ids, quantities, dates and hashes. Names, phone numbers, addresses and exact coordinates live in separate tables encrypted with per-farm keys. Location in an event is a coarse cell, never coordinates.
+- **Erasure.** Destroying a per-farm key makes encrypted copies unreadable, but that alone does not prove every copy is gone, and the law may require some records to be kept. India's DPDP Rules were notified in November 2025, and the retention and erasure provisions are reported to take effect on 13 May 2027. The chain is pseudonymous, not anonymous. A data inventory, backup-expiry rule and legal review are needed before claiming DPDP compliance.
+- **Access.** Phone-based login, role-based access, per-farm isolation, TLS everywhere, per-device certificates for MQTT.
+- **Recovery.** Tested backups and restores with a stated recovery point and recovery time objective, before the ledger is relied on as compliance evidence.
+
+---
+
+## 12. Pilot plan
+
+Treat **20 to 30 ponds in one cluster**, with one processor, exporter or hatchery partner, as a **feasibility pilot**. It can prove the workflow and the data capture. It cannot prove that the AI is accurate or that rejections will fall.
+
+Measure:
+
+1. Share of harvests with a complete ledger
+2. Residue-risk events caught before harvest
+3. Alert lead time, measured separately for pathogen events (against PCR) and residue findings (against a residue test)
+4. Alert precision and sync reliability
+
+Before starting: measure the current recording and pre-harvest verification process as a baseline; set pass and fail thresholds; use signed lab results and technician checks as the reference, never the system's own predictions. Twenty to thirty ponds will see too few outbreaks to validate a model, so evaluate models on a separate, larger dataset.
+
+**Build priorities**
+
+| Priority | When | Work |
 |---|---|---|
-| Disease photos | ShrimpDiseaseBD, 1,149 images at 2048×2048 [R15] | Public |
-| More disease photos | Kaggle, Roboflow Universe, Mendeley Data | Check each licence and label quality before use |
-| Water quality | Kaggle aquaculture / IoT pond datasets | Mostly fish ponds; used for pre-training only |
-| Our sensor logs | AquaSentinel ESP32 nodes, from day one | The most valuable dataset |
-| Synthetic sensor data | Physics-based simulator of the daily DO cycle | Pre-trains the forecaster before real data exists |
-| Weather history | Open-Meteo historical API (ERA5 reanalysis) | Free, hourly, any location |
-| Growth curves | Published L. vannamei growth studies + farm records | EHP baseline |
-| Knowledge base | ICAR-CIBA, MPEDA, Coastal Aquaculture Authority, FAO publications | Feeds the RAG index |
-| Speech-to-text | AI4Bharat IndicVoices and Kathbath, Google FLEURS | Indian-language speech |
-| Text-to-speech | IIT Madras IndicTTS | Indian-language voices |
-| Translation | BPCC (the IndicTrans2 training corpus) | |
-| LLM fine-tuning | Q&A generated by Claude from the knowledge base, checked by people | Distillation data |
-| Water colour, feed tray and size photos | Collected by the team with labels | No good public sets exist |
+| 0 | Before relying on it for real decisions | Agree with one exporter what evidence they will accept; separate pathogen and residue testing; lab acceptance criteria and result statuses; the harvest-gate decision contract; full treatment event with scope; lot lineage and merge rules; rule-pack sources and replay; aerator failure-mode table |
+| 1 | Before the first real compliance pilot | Signed lab evidence and sample custody; invoice reconciliation; the event schema; signing and key-compromise process; roles, isolation and scoped consent; QR signing and certificate lifecycle; daily briefing; tested backups |
+| 2 | Once the evidence workflow works | Pilot baselines; evaluate the DO forecast and disease triage against real ground truth; growth tracking, evidence reports, expenses, assistant |
 
-> **Licences matter.** Some popular models are not free for commercial use (for example Meta's MMS speech models are non-commercial) and the Ultralytics YOLO code is AGPL-3.0. Check every dataset and model licence before shipping.
+**Hackathon demo.** A sensor simulator, an outbreak button, a label scan that blocks a harvest ("withdrawal ends in 9 days"), a QR certificate and an exporter lot view. Make its limits visible: label simulated data as synthetic, show the OCR result, the human confirmation and the rule-pack version, show the exact reason for each block, keep pathogen and residue results separate, and show each certificate's evidence and whether it is independently verified.
 
 ---
 
-## 12. Security and the crop passport
-
-![Security and passport](docs/diagrams/20-security-passport.png)
-
-- Phone OTP login, short-lived JWTs and role-based access.
-- Each ESP32 has its own certificate; MQTT runs over TLS; firmware updates are signed.
-- All third-party API keys stay on the server.
-- Data is encrypted at rest on the server and on the phone.
-- The outbreak map never reveals an individual farm.
-- The crop passport is a hash chain signed with the farm's Ed25519 key. If any entry is edited, verification fails.
-
----
-
-## 13. Deployment
-
-![Deployment](docs/diagrams/19-deployment.png)
-
-The whole backend runs with Docker Compose on a single cloud VM to start, and can move to k3s later. CI runs linting, tests, image builds and a security scan on every push. Postgres and MinIO are backed up nightly and kept for 30 days.
-
----
-
-## 14. Repository layout
-
-This is the planned structure:
+## 13. Planned repository layout
 
 ```
 aquasentinel/
-├── firmware/            # ESP32-S3 PlatformIO project
-├── app/                 # Flutter mobile app (+ web dashboard target)
+├── firmware/            # ESP32 project: sensors, two-tier DO control, relay feedback, SMS
+├── app/                 # Flutter farmer and technician app (offline-first)
+├── web/
+│   ├── exporter/        # Next.js exporter portal and public QR status page
+│   └── admin/           # Next.js admin console: rule packs, corrections, recall
 ├── backend/
-│   ├── api/             # FastAPI service
-│   ├── agent/           # LangGraph + Claude agent and tools
-│   ├── ingest/          # MQTT ingest worker
-│   ├── workers/         # Arq jobs: risk, alerts, reports, retraining
-│   └── ml_inference/    # ONNX Runtime model server
-├── ml/
-│   ├── notebooks/
-│   ├── training/        # training and evaluation scripts
-│   ├── export/          # ONNX / LiteRT / GGUF export and quantization
-│   └── packs/           # model pack manifests
-├── knowledge/           # source documents for the RAG index
-├── infra/               # docker-compose, Caddyfile, EMQX config, CI
-└── docs/diagrams/       # all diagrams (.png)
+│   ├── api/             # FastAPI service and ingestion
+│   ├── events/          # event store, hash chains, projections, replay
+│   ├── rules/           # rule engine and harvest gate
+│   ├── passport/        # certificates, signing, key registry
+│   ├── workers/         # outbox, alerts, reports
+│   └── ai/              # OCR, triage, forecast (advisory only)
+├── schemas/events/      # JSON Schema per event type and version
+├── rulepacks/           # versioned, signed rule packs with source references
+├── infra/               # docker-compose, MQTT config, CI
+└── docs/                # design docs and diagrams
 ```
 
 ---
 
-## 15. Getting started
+## Open items
 
-The project is at the design stage. Code is not in the repository yet, so the steps below describe the intended setup.
-
-**Prerequisites:** Docker and Docker Compose, Flutter SDK, Python 3.11+, PlatformIO, an Anthropic API key, a Firebase project.
-
-1. Copy the environment template and fill in your keys:
-
-   ```bash
-   cp infra/.env.example infra/.env
-   ```
-
-   ```dotenv
-   ANTHROPIC_API_KEY=your-key-here      # server only, never put this in the app
-   TAVILY_API_KEY=your-key-here
-   GOOGLE_CSE_ID=your-id
-   GOOGLE_API_KEY=your-key-here
-   BHASHINI_API_KEY=your-key-here
-   FIREBASE_PROJECT_ID=your-project
-   POSTGRES_PASSWORD=change-me
-   MINIO_ROOT_PASSWORD=change-me
-   ```
-
-2. Start the backend:
-
-   ```bash
-   docker compose -f infra/docker-compose.yml up -d
-   ```
-
-3. Run the app:
-
-   ```bash
-   cd app && flutter pub get && flutter run
-   ```
-
-4. Flash the ESP32:
-
-   ```bash
-   cd firmware && pio run -t upload
-   ```
-
-5. Pair the device from the app by scanning the QR code on the enclosure.
+- Read the **primary** CDSCO and MPEDA letters behind the 43% and 74% figures (only press reports were seen).
+- Check competitor feature claims beyond their public pages.
+- Collect **destination-market residue limits** for the rule pack.
+- Validate the DO setpoints and calibration intervals on the real probe and real ponds.
+- Settle the event-schema choices: telemetry window, backdating tolerance (48 hours is a placeholder), whether farmer and technician events are signed at the pilot, anchoring schedule, and JSON Schema versus Protobuf.
+- Get **legal review** of the erasure approach and the certificate wording before any claim of compliance.
+- Agree with a real exporter or processor what evidence they will accept.
 
 ---
 
-## 16. Roadmap
+## References
 
-- [ ] Hardware node: sensors, calibration, relay control, SMS
-- [ ] Firmware safety rules and offline buffering
-- [ ] Backend: ingest, storage, risk engine, alerts
-- [ ] Flutter app: dashboard, alerts, photo scan, logs, offline sync
-- [ ] Disease classifier trained and exported to LiteRT
-- [ ] DO forecaster trained on simulated data, then real pond data
-- [ ] Claude agent with tools, memory and RAG
-- [ ] Language packs for all six languages
-- [ ] Crop passport and exporter dashboard
-- [ ] Neighbourhood outbreak map
-- [ ] Field pilot on partner farms
+Checked on 21 Oct 2026.
 
----
+**Regulation and testing**
+- [The South First: Andhra farms drove 74% of antibiotic shrimp rejections](https://thesouthfirst.com/health/andhra-farms-drove-74-of-indias-antibiotic-shrimp-rejections-centre-seeks-answers-from-states/)
+- [Medical Dialogues: CDSCO seeks state action on banned antibiotic residues](https://medicaldialogues.in/news/industry/pharma/banned-antibiotic-residues-trigger-shrimp-export-rejections-cdsco-seeks-state-action-172076)
+- [MPEDA: Pre-Harvest Testing of aquaculture products](https://mpeda.gov.in/?p=1094)
+- [Coastal Aquaculture Authority: permissible residual levels](https://www.caa.gov.in/uploaded/doc/PermissibleResidual.pdf)
+- [FDA LIB 4682: LC-MS/MS for nitrofuran metabolites and chloramphenicol](https://fda.gov/media/169779/download)
+- [S&P Global: compliance risks for India's shrimp sector (EU and Japan inspection rates)](https://www.spglobal.com/energy/en/news-research/latest-news/agriculture/020326-compliance-risks-rising-for-indias-shrimp-sector-amid-new-ftas-mpeda-chairman)
+- [FSMA 204 compliance date of 20 July 2028](https://reliamag.com/guides/fsma-rule-204-compliance/)
+- [Mondaq: DPDP retention and deletion](https://www.mondaq.com/data-retention-and-deletion-under-the-dpdp-act-how-long-can-businesses-retain-personal-data-in-india/1844062)
 
-## 17. References and research credits
+**Science and sensors**
+- [ICAR KRISHI: economic loss due to diseases in Indian shrimp farming](https://krishi.icar.gov.in/jspui/handle/123456789/43787)
+- [HORIBA: galvanic vs optical DO sensors](https://www.horiba.com/int/water-quality/support/technical-tips/electrodes/galvanic-vs-optical-dissolved-oxygen-sensors/)
+- [Global Seafood Alliance: automated DO sensing and aerator activation](https://www.globalseafood.org/advocate/automated-dissolved-oxygen-sensing-and-aerator-activation-in-aquaculture/)
+- [Auburn: DO setpoints for aeration in vannamei ponds](https://etd.auburn.edu/handle/10415/9214)
+- [Mendeley: ShrimpDiseaseImageBD dataset](https://data.mendeley.com/datasets/jhrtdj9txm/3)
 
-Figures quoted in this README come from the sources below. Please read the original before quoting a number.
-
-### Problem and domain research
-
-- **[R1]** National survey of infectious disease losses in Indian shrimp farming (909 farms, 23 coastal districts), *Aquaculture* (2020). ICAR repository: https://krishi.icar.gov.in/jspui/handle/123456789/43787
-- **[R2]** Economic burden of diseases in aquatic animal food production in India. ICAR-CMFRI: https://eprints.cmfri.org.in/18644/
-- **[R3]** Study of Pacific white shrimp (L. vannamei) production and state-wise share, citing MPEDA data (AJAEES, 2021): https://ageconsearch.umn.edu/record/358126/files/Narkis39102021AJAEES75289.pdf
-- **[R4]** Andhra farms drove 74% of India's antibiotic shrimp rejections (The South First, 2026): https://thesouthfirst.com/health/andhra-farms-drove-74-of-indias-antibiotic-shrimp-rejections-centre-seeks-answers-from-states/
-- **[R5]** Automated dissolved oxygen sensing and aerator activation in aquaculture (Global Seafood Alliance): https://www.globalseafood.org/advocate/automated-dissolved-oxygen-sensing-and-aerator-activation-in-aquaculture/
-- **[R6]** Influence of stressors on shrimp susceptibility to white spot disease, part 1 (Global Seafood Alliance): https://www.globalseafood.org/advocate/influence-of-stressors-on-shrimp-susceptibility-to-white-spot-disease-part-1/
-- **[R7]** Tendencia, E. A. and Verreth, J. A. J., temperature fluctuation, low salinity and water microflora as risk factors for WSSV outbreaks in stocked shrimp ponds (2011), SEAFDEC/AQD. Summarised in [R6].
-- **[R8]** ICAR-CIBA, Hepatopancreatic microsporidiosis (EHP) advisory: https://ciba.icar.gov.in/wp-content/uploads/2020/06/Hepatopancreatic-Microsporidiosis.pdf
-- **[R9]** Robins McIntosh on EHP and shrimp farming, part 1 (Global Seafood Alliance): https://www.globalseafood.org/advocate/robins-mcintosh-on-everything-you-need-to-know-about-ehp-and-shrimp-farming-part-1/
-- **[R12]** LSTM-based dissolved oxygen prediction for aquaculture aerator control, *Mathematical Biosciences and Engineering* 16(4) (2019): https://aimspress.com/aimspress-data/mbe/2019/4/PDF/mbe-16-04-148.pdf
-- **[R13]** US EPA, Ambient water quality criteria for ammonia (saltwater), 1989: https://www.epa.gov/sites/default/files/2019-02/documents/ambient-wqc-ammonia-saltwater-1989.pdf
-- **[R14]** Bayot et al., GIS-based regional alert system for shrimp diseases in Ecuador (2008): https://www.cenaim.espol.edu.ec/sites/cenaim.espol.edu.ec/files/Bayot.pdf
-
-### Shrimp AI and monitoring research
-
-- **[R10]** A multi-stage deep learning framework for automated detection and localization of shrimp disease (ConvNeXt-Tiny, U-Net++, Grad-CAM), BRAC University (2026): https://dspace.bracu.ac.bd/items/9c2ed61e-c2d4-422b-8ec5-045f648377a0
-- **[R11]** Multi-class shrimp disease classification with explainable AI (Dual-Xception), Daffodil International University: https://research.daffodilvarsity.edu.bd/scopus-article/6713
-- **[R15]** ShrimpDiseaseBD dataset, East West University: https://aquahoy.com/?p=50410
-- **[R16]** A deep residual learning framework using ResNet-152 for multi-class classification of shrimp diseases, *Indian Journal of Animal Research*: https://arccjournals.com/journal/indian-journal-of-animal-research/BF-2100
-- **[R17]** DenseNet201-based white spot syndrome detection, *Indian Journal of Animal Research*: https://arccjournals.com/journal/indian-journal-of-animal-research/BF-1947
-- **[R18]** Application of artificial intelligence to automatic disease recognition in black tiger shrimp (EfficientNet-B4): https://vjol.info.vn/tckhcnthuysan/article/view/134418
-- **[R19]** Nguyen et al., Deep learning approach for forecasting water quality in IoT systems (LSTM), 2020: https://archimer.ifremer.fr/doc/00646/75836
-- **[R20]** EMD-RF-LSTM: combination prediction model of dissolved oxygen concentration in prawn culture, *Smart Agriculture* 3(2) (2021): https://doaj.org/article/35a84d9b883c4d0eb40405964e4ce369
-- **[R21]** Image technology based detection of infected shrimp in adverse environments, *Songklanakarin J. Sci. Technol.* (2022): https://doaj.org/article/69e782acbfc743df9e639e939b3aaf30
-- **[R22]** Underwater video monitoring of shrimp in turbid ponds, *Scientific Reports* (2016): https://www.nature.com/articles/srep31810
-- **[R23]** Kumar et al., field-portable closed-tube LAMP for WSSV, ICAR-CIBA: https://ciba.res.in/?p=18287
-- **[R24]** Sullivan et al., CRISPR/SHERLOCK single-copy detection of white spot syndrome virus, *Scientific Reports* (2019): https://pmc.ncbi.nlm.nih.gov/articles/PMC6928230
-- **[R25]** Acoustic control improves feeding productivity at shrimp farms (Global Seafood Alliance): https://www.globalseafood.org/advocate/acoustic-control-improves-feeding-productivity-at-shrimp-farms/
-
-### Methods
-
-- **[M1]** Tan, M. and Le, Q. V., EfficientNet: Rethinking Model Scaling for CNNs, ICML 2019. https://arxiv.org/abs/1905.11946
-- **[M2]** Howard, A. et al., Searching for MobileNetV3, ICCV 2019. https://arxiv.org/abs/1905.02244
-- **[M3]** Ke, G. et al., LightGBM: A Highly Efficient Gradient Boosting Decision Tree, NeurIPS 2017.
-- **[M4]** Lim, B. et al., Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting, 2021. https://arxiv.org/abs/1912.09363
-- **[M5]** Liu, F. T., Ting, K. M. and Zhou, Z.-H., Isolation Forest, ICDM 2008.
-- **[M6]** Chen, T. and Guestrin, C., XGBoost: A Scalable Tree Boosting System, KDD 2016. https://arxiv.org/abs/1603.02754
-- **[M7]** Lundberg, S. and Lee, S.-I., A Unified Approach to Interpreting Model Predictions (SHAP), NeurIPS 2017. https://arxiv.org/abs/1705.07874
-- **[M8]** Liu, W. et al., Energy-based Out-of-distribution Detection, NeurIPS 2020. https://arxiv.org/abs/2010.03759
-- **[M9]** Hu, E. et al., LoRA: Low-Rank Adaptation of Large Language Models, 2021. https://arxiv.org/abs/2106.09685
-- **[M10]** Chen, J. et al., BGE M3-Embedding, 2024. https://arxiv.org/abs/2402.03216
-- **[M11]** Radford, A. et al., Robust Speech Recognition via Large-Scale Weak Supervision (Whisper), 2022. https://arxiv.org/abs/2212.04356
-- **[M12]** Gulati, A. et al., Conformer: Convolution-augmented Transformer for Speech Recognition, 2020. https://arxiv.org/abs/2005.08100
-- **[M13]** Gala, J. et al., IndicTrans2: Towards High-Quality and Accessible Machine Translation Models for all 22 Scheduled Indian Languages, 2023. https://arxiv.org/abs/2305.16307
-- **[M14]** Garcia, H. E. and Gordon, L. I., Oxygen solubility in seawater: better fitting equations, *Limnology and Oceanography* 37(6), 1992.
-- **[M15]** Kalman, R. E., A New Approach to Linear Filtering and Prediction Problems, 1960.
-- **[M16]** Page, E. S., Continuous Inspection Schemes (CUSUM), *Biometrika*, 1954.
-- **[M17]** Angelopoulos, A. N. and Bates, S., A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification, 2021. https://arxiv.org/abs/2107.07511
-- **[M18]** Guo, C. et al., On Calibration of Modern Neural Networks, ICML 2017. https://arxiv.org/abs/1706.04599
-- **[M19]** Selvaraju, R. R. et al., Grad-CAM: Visual Explanations from Deep Networks, ICCV 2017. https://arxiv.org/abs/1610.02391
-- **[M20]** Lin, T.-Y. et al., Focal Loss for Dense Object Detection, ICCV 2017. https://arxiv.org/abs/1708.02002
-- **[M21]** Birant, D. and Kut, A., ST-DBSCAN: An algorithm for clustering spatial–temporal data, *Data & Knowledge Engineering*, 2007.
-- **[M22]** Hinton, G., Vinyals, O. and Dean, J., Distilling the Knowledge in a Neural Network, 2015. https://arxiv.org/abs/1503.02531
-- **[M23]** Yao, S. et al., ReAct: Synergizing Reasoning and Acting in Language Models, 2022. https://arxiv.org/abs/2210.03629
-- **[M24]** Lewis, P. et al., Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks, NeurIPS 2020. https://arxiv.org/abs/2005.11401
-
-### Acknowledgements
-
-Thanks to ICAR-CIBA, ICAR-CMFRI, MPEDA, SEAFDEC/AQD and AI4Bharat for the public research, advisories and open models this project builds on.
+**Market**
+- [Inc42: AquaExchange Series B](https://inc42.com/buzz/aquaexchange-raises-8-mn-series-b-eyes-%E2%82%B9275-cr-revenue-in-fy26/)
+- [Fishwise: Aquaconnect](https://fishwise.org/aquascape/aquaconnect/)
 
 ---
 
-## 18. License
+## License
 
-To be decided by the team. MIT is suggested for the code. Datasets and third-party models keep their own licences (see [Datasets](#11-datasets)).
-
----
-
-<sub>All diagrams are in `docs/diagrams/` and were drawn with Excalidraw.</sub>
+To be decided. MIT is suggested for the code. Datasets and third-party models keep their own licences; check each one before shipping.
