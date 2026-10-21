@@ -331,6 +331,112 @@ Exporters see a lot only through a consent grant scoped to that lot. Revoking co
 
 ## 10. Features and roadmap
 
+### 10.1 Feature catalogue
+
+Every feature of the application, grouped by what it protects. **Tier** is the build priority: **1** is the MVP, **2** is added selectively once the evidence workflow works, **3** is deferred until its trigger is met (see 10.2). "Offline" says whether the feature works with no internet. Items marked * come from the original 37-feature list and were not placed in a tier in the design review, so their tier here is my classification; please confirm it.
+
+**A. Pond monitoring and safety**
+
+| Feature | What it does | Tier | Offline |
+|---|---|---|---|
+| Live pond readings | Dissolved oxygen (DO), temperature, pH and salinity per pond, from real or simulated sensors | 1 | Yes, buffered on the ESP32 |
+| Two-tier aerator control | Soft DO band with hysteresis plus a hard 3 mg/L floor that forces the aerator on, decided on the ESP32 (diagrams 04, 05) | 1 | Yes |
+| Aerator health | A current sensor confirms the motor really runs and raises an aerator-fault alert if it does not | 1 | Yes |
+| Power-cut detection | The ESP32 detects mains failure and alerts the farmer to start the generator or backup | 1 | Yes, by SMS |
+| Sensor self-check | Flags fouled, stuck or drifting probes before bad readings drive decisions | 1 | Yes |
+| Calibration reminders | Per-probe calibration schedule and reminders | 1 | Yes |
+| Critical alerts with escalation | Push first, then escalate to worker and technician, plus a dead-man heartbeat that alerts when a node goes silent (diagram 06) | 1 | SMS over 4G when offline |
+| SMS fallback | Critical alerts go by SMS from the 4G module when there is no internet | 1 | Yes |
+| Signed firmware and config | Signed firmware updates with rollback; signed configuration with safe bounds | 1 | Yes |
+| Night DO forecast* | Predicts the overnight DO low from the evening's readings; advisory only, unproven until validated on real sensors | 2 | Possible |
+| Toxic ammonia estimate* | Calculated from pH, temperature and salinity, so no ammonia probe is needed; method to verify | 2 | Yes |
+| Rule-based risk indicators* | Simple risk flags that can use rain and air temperature; not a validated outbreak model | 2 | Partly (cached weather) |
+
+**B. Treatments, evidence and the harvest gate**
+
+| Feature | What it does | Tier | Offline |
+|---|---|---|---|
+| Treatment logging | Label photo, dose, route, scope and time, with OCR suggesting the product and a mandatory human confirmation (diagram 07) | 1 | Yes, syncs later |
+| Product normalisation | Maps brand names to a product identity and formulation for the rule engine | 1 | Yes |
+| Withdrawal clocks | Starts a clock per treatment and enforces it deterministically | 1 | Computed on sync |
+| Rule packs | Versioned, signed, effective-dated banned lists, residue limits and withdrawal rules (diagram 10) | 1 | n/a |
+| Invoice and inventory reconciliation | Purchase capture, stock ledger and unexplained-gap review (diagram 14) | 1 | Capture offline |
+| Pathogen (PCR) test logging* | Records PCR and LAMP-style pathogen results as their own evidence type | 1 | Yes |
+| Residue test logging | Records residue results with six statuses, including MPEDA pre-harvest certificates (diagram 13) | 1 | Yes |
+| Harvest gate | Returns CLEARED, BLOCKED or REVIEW REQUIRED from a frozen evidence snapshot; never green by default (diagrams 08, 09) | 1 | Needs backend |
+| Corrections with dual approval | Authorized people correct evidence; no override turns a failed mandatory rule green | 1 | Needs backend |
+| Event history | Every fact as an immutable event, viewable as a timeline per farm, cycle and lot | 1 | Cached |
+| Lot lineage | Pond, crop cycle, harvest and lot, with split and merge (diagram 12) | 1 | Needs backend |
+
+**C. Passport, exporters and traceability**
+
+| Feature | What it does | Tier | Offline |
+|---|---|---|---|
+| Crop passport with signed QR | States the evidence held and whether it is independently verified; never claims "antibiotic-free" (diagram 11) | 1 | Cached copy shown as STALE |
+| Certificate lifecycle | Valid, Superseded and Revoked, re-evaluated on new evidence, rule-pack changes, key revocation or recall | 1 | Needs backend |
+| Consent-based exporter portal | Exporters see a lot only through a revocable grant scoped to that lot (diagram 20) | 1 | Online |
+| Recall handling | Admins revoke affected certificates and notify consented exporters | 1 | Online |
+| Evidence reports* | PDF reports for buyers, banks and insurers built from the ledger | 2 | Partly |
+| Pond-to-port handoff* | Lot handoff to processing and cold-chain tracking | After pilot | Online |
+
+**D. Farm management**
+
+| Feature | What it does | Tier | Offline |
+|---|---|---|---|
+| Farm, pond and crop-cycle setup | The records everything else attaches to | 1 | Yes |
+| Multiple ponds, users and roles | Farmer (owner), worker, technician, exporter and admin, with farm-scoped access (diagram 20) | 1 | Yes |
+| Offline capture and sync | Local queue with idempotency keys; conflicts become review items (diagram 19) | 1 | Yes |
+| Daily pond briefing and task reminders* | Read-only summary of overnight minimum DO, equipment faults, withdrawal deadlines, open reviews and sampling due | 1 | Yes |
+| Manual sampling and growth* | Logged samples and a growth curve against the expected curve | 2 | Yes |
+| Seed (PL) source records* | Hatchery and batch records plus pond-preparation and seed-quality checklists | 2 | Yes |
+| Photo observation log | Dated pond photos kept as evidence | 2 | Yes |
+| Own-pond map | Pond locations and layout for the farmer | 2 | Yes |
+| Treatment-cost tracking | Cost of each logged treatment | 2 | Yes |
+| Expense, inventory and profit tracker* | Whole-farm bookkeeping | 3 | Yes |
+
+**E. Health, feeding and AI assistance (all advisory; AI never clears a harvest or recommends drugs or doses)**
+
+| Feature | What it does | Tier | Offline |
+|---|---|---|---|
+| Label OCR | Reads a product label and suggests the identity for the farmer to confirm | 1 | Online |
+| Experimental photo triage* | Photo-based triage of visible symptoms, clearly labelled as triage and not diagnosis | 2 | Partly |
+| Plain-language explanation* | A vision-language model explains a triage result; no drug or dose advice | 2 | Online |
+| Voice assistant | English plus one local language, with retrieval-based answers and expert escalation | 2 | Online |
+| Feed tray photo check* | Leftover feed estimate from a tray photo | 3 | Needs validation |
+| Feed advisor* | Cuts the ration when DO is low or risk is high | 3 | Needs validation |
+| EHP slow-growth detector* | Flags unusual slow growth | 3 | Needs validation |
+| Water colour check* | Plankton-bloom type from a photo | 3 | Needs validation |
+| Shrimp count and size from a photo | Automatic biomass and FCR | 3 | No good public dataset |
+| Hydrophone feeding | Detects feeding activity by sound | 3 | Extra hardware |
+| Offline LLM or VLM | Small on-device model | 3 | Use retrieval-only answers instead |
+| Treatment guidance* | The assistant gives no drug or dose advice; it escalates to a technician or expert | Out of scope | n/a |
+
+**F. Market, network and knowledge**
+
+| Feature | What it does | Tier | Offline |
+|---|---|---|---|
+| Regional outbreak map | Anonymous neighbourhood outbreak view; needs enough farms and privacy controls | 3 | Online |
+| Price tracker and forecast* | Market prices and a forecast | 3 | Online |
+| Harvest planner* | Best harvest date from growth, price and risk | 3 | Partly |
+| Government schemes and insurance knowledge base* | Only with sourced, dated content | 3 | Partly |
+| Web search for fresh information* | Assistant looks up current facts | 2 | Online |
+| Farm memory* | The assistant remembers ponds and past problems | 3 | Needs a privacy design |
+| Lab finder* | Locates accredited labs for PCR and residue tests | 3 | Online |
+
+**G. Platform, security and operations**
+
+| Feature | What it does | Tier | Offline |
+|---|---|---|---|
+| Append-only event store with hash chains | Tamper-evident record with periodic Merkle anchoring and an external timestamp (diagram 18) | 1 | n/a |
+| Signed evidence | Devices, labs, the passport service and rule-pack approvers sign what they produce | 1 | n/a |
+| Key registry and key-compromise handling | A compromised key invalidates only later signatures, and affected certificates go back through the gate | 1 | n/a |
+| Privacy by design | Personal data stays outside the ledger, with per-farm keys (diagram 21) | 1 | n/a |
+| Tenant isolation | Applies to endpoints, background jobs, exports and object storage | 1 | n/a |
+| Tested backups | Stated recovery point and recovery time objectives | 1 | n/a |
+| Languages and downloadable packs* | Local-language support and offline packs | 3 | Yes |
+
+### 10.2 Tiers and roadmap
+
 **Tier 1: the MVP (19 features)**
 
 - Farm, pond and crop-cycle setup; lot lineage (split and merge); roles and farm-scoped access
